@@ -6,12 +6,12 @@
 
 ## What’s inside | 구성
 - **Core Systems**
-  - `Currency` & `CurrencyManager` (SO runtime clone)
-  - `Gacha<T>` (weighted sampling, prefix sums/cache, data-driven)
-  - [More: Save/Load, Addressables helpers, Event Bus]
+  - `CurrencySystem` (SO runtime clone)
+  - `RoguelikeSystem` (SO runtime clone)
+  - `GachaSystem` (weighted sampling, prefix sums/cache, data-driven)
+  - `DeckSystem`
+  - `RewardSystem`
 - **Samples / Scenes**
-  - `Samples/CurrencyDemo` : Earn/Use UI with autosave
-  - `Samples/GachaSample` : probability sampler & viz
 - **Docs**
   - design intent, perf/quality checklist, test guide
 
@@ -59,24 +59,14 @@
 ## Folder Structure | 폴더 구조 (예시)
 ```
 /Assets
-  /Portfolio
-    /Currency
-      Currency.cs
-      CurrencyManager.cs
-      CurrencyState.cs
-      CurrencyData.cs
-      README.md
-    /Gacha
-      Gacha.cs
-      GachaPair.cs
-      GachaSample.cs
-      README.md
-    /Samples
-      /CurrencyDemo
-      /GachaSample
-    /Docs
-      architecture.md
-      quality-checklist.md
+  /Scripts
+    /Base
+    /CurrencySystem
+    /DeckSystem
+    /GachaSystem
+    /RewardSystem
+    /RoguelikeSystem
+    /Utils
 README.md
 ```
 
