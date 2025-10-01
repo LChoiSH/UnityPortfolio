@@ -1,7 +1,7 @@
 # Unity Client Portfolio · by Seonghoon Choi
 
 > **KOR/ENG** · Production-ready Unity C# snippets & systems extracted from shipped/prototype work.  
-> 이 저장소는 실전에서 검증한 **Unity C# 모듈/샘플**을 정리한 포트폴리오입니다.
+> 이 저장소는 실전에서 검증한 **Unity C# 모듈**을 정리한 포트폴리오입니다.
 
 ---
 
@@ -12,8 +12,6 @@
   - `GachaSystem` — Weighted sampling, without-replacement sampling, rate export
   - `DeckSystem` — (WIP) deck & selection helpers
   - `RewardSystem` — (WIP) reward pipeline
-- **Samples / Scenes**: minimal scenes demonstrating Earn/Use, gacha choices, etc.
-- **Docs**: design intent, perf/quality checklist, test guide
 
 > Tip: Folder map lives under `Assets/Scripts/{CurrencySystem, RoguelikeSystem, GachaSystem, DeckSystem, RewardSystem, Utils}` (see repo tree).
 
@@ -29,10 +27,8 @@
 ---
 
 ## 🚀 Quick Start
-1. Copy desired folders under your project’s `Assets/`.
-2. (Optional) Add asmdef references if your project uses them.
-3. Open `Samples/CurrencyDemo` and Play. Try Earn/Use and observe the **debounced save** logs.
-
+1. Just Clone this project. Or Copy desired folders under your project’s `Assets/`.
+2. Use quickly!
 ---
 
 ## 🧰 Modules
@@ -86,14 +82,14 @@
     /RewardSystem
     /RoguelikeSystem
     /Utils
+      /Localization
 README.md
 ```
-
 ---
 
 ## 📜 License & Credits
 - Author: **Seonghoon Choi**
-- Contact: [email / linkedin / site]
+- Contact: csh42504@gmail.com
 - License: [MIT / Proprietary]
 - Shipped/Prototypes (selected code only): War and Peas, My Stellar Idle, Box Inc.
 
