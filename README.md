@@ -1,4 +1,4 @@
-# DDGames · Unity Client Portfolio  (KOR/ENG)
+# 최성훈(Seonghoon Choi) Unity Client Portfolio (KOR/ENG)
 
 > Summary
 > - KOR: 상용/프로토타입에서 실제로 사용한 **Unity C# 모듈과 샘플 코드**를 정리한 포트폴리오 저장소입니다.
@@ -6,7 +6,7 @@
 
 ## What’s inside | 구성
 - **Core Systems**
-  - `Currency` & `CurrencyManager` (SO runtime clone, read-only view, auto-save debounce)
+  - `Currency` & `CurrencyManager` (SO runtime clone)
   - `Gacha<T>` (weighted sampling, prefix sums/cache, data-driven)
   - [More: Save/Load, Addressables helpers, Event Bus]
 - **Samples / Scenes**
