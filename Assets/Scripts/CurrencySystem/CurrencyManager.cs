@@ -130,7 +130,7 @@ public class CurrencyManager : MonoBehaviour, HaveSave, HaveLoad
         if (currencyDic.ContainsKey(currencyName)) currencyDic[currencyName].ResetCurrency();
     }
 
-    [Button]
+    [Button, EditorButton]
     public void ResetCurrencies()
     {
         foreach (Currency currency in currencyDic.Values)
