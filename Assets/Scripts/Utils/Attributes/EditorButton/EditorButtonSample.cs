@@ -11,7 +11,7 @@ public class EditorButtonSample : MonoBehaviour
         Debug.Log("Click!");
     }
 
-    [EditorButton("string", editorOnly: true, confirm: "color change?")]
+    [EditorButton("string")]
     public void SampleDebugString(string input)
     {
         Debug.Log($"Click {input}");

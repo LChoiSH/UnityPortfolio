@@ -3,20 +3,20 @@ using UnityEngine;
 
 namespace CurrencySystem
 {
-    [CreateAssetMenu(menuName = "Currency", fileName = "Currency_")]
+    // [CreateAssetMenu(menuName = "Currency", fileName = "Currency_")]
     [Serializable]
-    public class Currency : ScriptableObject
+    public class Currency
     {
         [SerializeField] private string title;
         [SerializeField] private string description;
-        [SerializeField] private Sprite image;
+        [SerializeField] private Sprite icon;
         [SerializeField] private bool isPermanent = false; // 영구 재화 여부
 
         private CurrencyState currencyState;
 
         public string Title => title;
         public string Description => description;
-        public Sprite SpriteImage => image;
+        public Sprite Icon => icon;
         public bool IsPermanent => isPermanent;
         public long Amount => currencyState.amount;
         public long TotalAmount => currencyState.totalAmount;
@@ -70,20 +70,20 @@ namespace CurrencySystem
         }
     }
 
-    public static class CurrencyHelper
-    {
-        public static Currency Clone(this Currency source, long initialQuantity = 0, long initialTotal = 0)
-        {
-            Currency runtime = ScriptableObject.Instantiate(source);
+//     public static class CurrencyHelper
+//     {
+//         public static Currency Clone(this Currency source, long initialQuantity = 0, long initialTotal = 0)
+//         {
+//             Currency runtime = ScriptableObject.Instantiate(source);
 
-#if UNITY_EDITOR
-            // 에셋/씬에 저장 방지 (에러 발생 경우 있어서 추가 지우지 말 것)
-            runtime.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
-#endif
+// #if UNITY_EDITOR
+//             // 에셋/씬에 저장 방지 (에러 발생 경우 있어서 추가 지우지 말 것)
+//             runtime.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
+// #endif
 
-            runtime.SetDefaultValue(initialQuantity, initialTotal);
+//             runtime.SetDefaultValue(initialQuantity, initialTotal);
 
-            return runtime;
-        }
-    }
+//             return runtime;
+//         }
+//     }
 }

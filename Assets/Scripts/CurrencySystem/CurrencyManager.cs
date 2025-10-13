@@ -17,7 +17,7 @@ public class CurrencyManager : MonoBehaviour, HaveSave, HaveLoad
     private CurrencyData currencyData;
     private Dictionary<string, Currency> currencyDic = new Dictionary<string, Currency>();
 
-    public Sprite GetCurrencyImage(string currencyName) => currencyDic[currencyName].SpriteImage;
+    public Sprite GetCurrencyImage(string currencyName) => currencyDic[currencyName].Icon;
     public Currency FindCurrencyByTitle(string title) => currencyDic.ContainsKey(title) ? currencyDic[title] : null;
 
     private void Awake()
@@ -60,7 +60,9 @@ public class CurrencyManager : MonoBehaviour, HaveSave, HaveLoad
 
         foreach (Currency currency in currencies)
         {
-            Currency madeCurrency = currency.Clone();
+            // TODO: remove regacy
+            // Currency madeCurrency = currency.Clone();
+            Currency madeCurrency = currency;
 
             if (!currencyData.currencyStates.ContainsKey(currency.Title) || !currency.IsPermanent)
             {
