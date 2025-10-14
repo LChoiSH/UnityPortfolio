@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfdaa00552c7f57489d88b87461554f3, type: 3}
+  m_Name: CurrencyDatabase
+  m_EditorClassIdentifier: 
+  items:
+  - title: gold
+    description: This is gold
+    icon: {fileID: 21300000, guid: 717827aac8de69046966e2d26db70efb, type: 3}
+    isPermanent: 1
+  - title: bronze_key
+    description: This is bronze key
+    icon: {fileID: 21300000, guid: 10439ca537e88944e9337f0edf6734b5, type: 3}
+    isPermanent: 1
+  - title: silver_key
+    description: This is silver key
+    icon: {fileID: 21300000, guid: a41fb2c461816f94ea2118b9f8b93584, type: 3}
+    isPermanent: 1
+  - title: silver coin
+    description: This is silverCoin
+    icon: {fileID: 21300000, guid: 5622964ea2b56dd4db5e31f6c4621865, type: 3}
+    isPermanent: 0
+  - title: item_1
+    description: item_1
+    icon: {fileID: 21300000, guid: e1441c11e3fe4354b88089b03c49fb36, type: 3}
+    isPermanent: 0
+  - title: item_2
+    description: item_2
+    icon: {fileID: 21300000, guid: 0eee042fd1d256345a8d65cf5de8161c, type: 3}
+    isPermanent: 0
+  - title: item_3
+    description: item_3
+    icon: {fileID: 21300000, guid: 626c7352658415f42ab5603ab00c454b, type: 3}
+    isPermanent: 0

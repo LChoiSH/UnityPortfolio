@@ -7,6 +7,7 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using CurrencySystem;
+using Codice.CM.Common.Matcher;
 
 public class CurrencyDatabaseWindow : EditorWindow
 {
@@ -19,21 +20,19 @@ public class CurrencyDatabaseWindow : EditorWindow
 
     // UI
     private ToolbarSearchField _searchField;
+    private string searchText;
     private Label _dbPathLabel;
     private MultiColumnListView _table;
     private VisualElement _footer;
 
-    // 필터 상태
-    private string _filter = "";
-
-    // 뷰 인덱스 매핑 (표시중 인덱스 -> 실제 인덱스)
+    // index mapping
     private readonly List<int> _viewToModel = new List<int>();
 
-    [MenuItem("Tools/Currency/Database Window")]
+    [MenuItem("Tools/Currency/Currency Database Window")]
     public static void Open()
     {
-        CurrencyDatabaseWindow wnd = GetWindow<CurrencyDatabaseWindow>("Currency Database");
-        wnd.minSize = new Vector2(900, 520);
+        CurrencyDatabaseWindow window = GetWindow<CurrencyDatabaseWindow>("Currency Database");
+        window.minSize = new Vector2(900, 520);
     }
 
     private void OnEnable()
@@ -46,8 +45,7 @@ public class CurrencyDatabaseWindow : EditorWindow
     private void ConstructUI()
     {
         rootVisualElement.styleSheets.Clear();
-
-        // 상단 툴바
+        // toolbar
         Toolbar toolbar = new Toolbar();
 
         ToolbarButton selectBtn = new ToolbarButton(() =>
@@ -62,39 +60,37 @@ public class CurrencyDatabaseWindow : EditorWindow
         })
         { text = "Select DB" };
 
-        ToolbarButton newBtn = new ToolbarButton(CreateNewDatabase) { text = "New DB" };
-        ToolbarButton addBtn = new ToolbarButton(AddRow) { text = "+ Add" };
-        ToolbarButton dupBtn = new ToolbarButton(DuplicateSelected) { text = "Duplicate" };
+        ToolbarButton addBtn = new ToolbarButton(AddRow) { text = "Add" };
         ToolbarButton delBtn = new ToolbarButton(DeleteSelected) { text = "Delete" };
 
         _searchField = new ToolbarSearchField();
         _searchField.style.minWidth = 240;
         _searchField.RegisterValueChangedCallback((ChangeEvent<string> evt) =>
         {
-            _filter = evt.newValue ?? "";
+            searchText = evt.newValue ?? string.Empty;
             RefreshView();
         });
 
         toolbar.Add(selectBtn);
-        toolbar.Add(newBtn);
-        toolbar.Add(new ToolbarSpacer());
+        toolbar.Add(new Label("  "));
         toolbar.Add(addBtn);
-        toolbar.Add(dupBtn);
+        toolbar.Add(new Label("  "));
         toolbar.Add(delBtn);
-        toolbar.Add(new ToolbarSpacer());
+        toolbar.Add(new Label("  "));
         toolbar.Add(new Label("Search:"));
         toolbar.Add(_searchField);
 
         rootVisualElement.Add(toolbar);
 
-        // DB 경로 라벨
+        // DB Path label
         _dbPathLabel = new Label("<No Database>");
         _dbPathLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
         _dbPathLabel.style.marginLeft = 8;
         _dbPathLabel.style.marginTop = 4;
+        _dbPathLabel.style.marginBottom = 4;
         rootVisualElement.Add(_dbPathLabel);
 
-        // 테이블
+        // table
         _table = new MultiColumnListView
         {
             selectionType = SelectionType.Single,
@@ -103,7 +99,22 @@ public class CurrencyDatabaseWindow : EditorWindow
         _table.style.flexGrow = 1f;
         _table.fixedItemHeight = RowHeight;
 
-        // === 컬럼 정의 ===
+        Column cIndex = new Column
+        {
+            title = " ",
+            width = 24,
+            minWidth = 24,
+            maxWidth = 48,
+            makeCell = () =>
+            {
+                Label lb = new Label();
+                lb.style.unityTextAlign = TextAnchor.MiddleRight; // 정렬(우측 추천)
+                lb.style.paddingRight = 8;
+                return lb;
+            },
+            bindCell = BindIndexCell
+        };
+
         Column cIcon = new Column
         {
             title = "Icon",
@@ -117,7 +128,7 @@ public class CurrencyDatabaseWindow : EditorWindow
         Column cTitle = new Column
         {
             title = "Title",
-            width = 260,
+            width = 200,
             makeCell = () => MakeStretchTextField("title-field", false),
             bindCell = BindTitleCell
         };
@@ -151,22 +162,18 @@ public class CurrencyDatabaseWindow : EditorWindow
             bindCell = BindPermanentCell
         };
 
+        _table.columns.Add(cIndex);
         _table.columns.Add(cIcon);
         _table.columns.Add(cTitle);
         _table.columns.Add(cDesc);
         _table.columns.Add(cPermanent);
 
-        // 컨텍스트 메뉴 (우클릭)
+        // mouse right click
         _table.RegisterCallback<ContextualMenuPopulateEvent>((ContextualMenuPopulateEvent evt) =>
         {
             bool hasSel = _table.selectedIndex >= 0;
 
             evt.menu.AppendAction("Add", (DropdownMenuAction _) => AddRow());
-            evt.menu.AppendAction(
-                "Duplicate",
-                (DropdownMenuAction _) => DuplicateSelected(),
-                (DropdownMenuAction _) => hasSel ? DropdownMenuAction.Status.Normal : DropdownMenuAction.Status.Disabled
-            );
             evt.menu.AppendAction(
                 "Delete",
                 (DropdownMenuAction _) => DeleteSelected(),
@@ -177,11 +184,9 @@ public class CurrencyDatabaseWindow : EditorWindow
             evt.menu.AppendAction("Validate Titles", (DropdownMenuAction _) => ValidateTitles());
         });
 
-        // ObjectField가 드래그&드롭을 자체 지원하므로 별도 Drag 이벤트 불필요
-
         rootVisualElement.Add(_table);
 
-        // 하단 푸터
+        // footer
         _footer = new VisualElement
         {
             style =
@@ -232,7 +237,7 @@ public class CurrencyDatabaseWindow : EditorWindow
         }
 
         _so = new SerializedObject(_db);
-        _itemsProp = _so.FindProperty("items"); // private List<Currency> items;
+        _itemsProp = _so.FindProperty("items");
         _dbPathLabel.text = AssetDatabase.GetAssetPath(_db);
         RefreshView();
     }
@@ -245,28 +250,26 @@ public class CurrencyDatabaseWindow : EditorWindow
         {
             List<int> indices = Enumerable.Range(0, _db.Items.Count).ToList();
 
-            if (!string.IsNullOrEmpty(_filter))
+            // search field filter
+            if (!string.IsNullOrEmpty(searchText))
             {
-                string f = _filter.Trim().ToLowerInvariant();
-                indices = indices.Where((int i) =>
+                indices = indices.Where(i =>
                 {
-                    Currency d = _db.Items[i];
-                    string title = d != null ? (d.Title ?? string.Empty) : string.Empty;
-                    string desc = d != null ? (d.Description ?? string.Empty) : string.Empty;
-                    return title.ToLowerInvariant().Contains(f)
-                        || desc.ToLowerInvariant().Contains(f);
+                    Currency currency = _db.Items[i];
+                    string t = currency != null ? (currency.Title ?? string.Empty) : string.Empty;
+                    string d = currency != null ? (currency.Description ?? string.Empty) : string.Empty;
+                    return t.Contains(searchText) || d.Contains(searchText);
                 }).ToList();
             }
 
             _viewToModel.AddRange(indices);
         }
 
-        _table.itemsSource = _viewToModel;  // 인덱스 맵을 그대로 아이템 소스로 사용
-        _table.Rebuild();                   // 전체 리빌드
+        _table.itemsSource = _viewToModel;
+        _table.Rebuild();
         titleContent.text = $"Currency Database ({_viewToModel.Count})";
     }
 
-    // ====== 셀 생성 헬퍼 ======
     private VisualElement MakeIconCell()
     {
         VisualElement row = new VisualElement();
@@ -314,7 +317,15 @@ public class CurrencyDatabaseWindow : EditorWindow
         return row;
     }
 
-    // ====== 바인딩 ======
+    private void BindIndexCell(VisualElement ve, int viewIndex)
+    {
+        Label lb = ve as Label;
+        if (lb == null) return;
+
+        int displayIndex = viewIndex + 1;
+        lb.text = displayIndex.ToString();
+    }
+
     private void BindIconCell(VisualElement ve, int viewIndex)
     {
         ObjectField field = ve.Q<ObjectField>("icon-field");
@@ -405,7 +416,6 @@ public class CurrencyDatabaseWindow : EditorWindow
             tf.SetValueWithoutNotify(string.Empty);
     }
 
-    // IsPermanent
     private void BindPermanentCell(VisualElement ve, int viewIndex)
     {
         Toggle tg = ve.Q<Toggle>("perm-toggle") ?? ve as Toggle;
@@ -447,19 +457,6 @@ public class CurrencyDatabaseWindow : EditorWindow
         }
     }
 
-    private Currency GetItem(int viewIndex)
-    {
-        if (_db == null || _viewToModel == null || viewIndex < 0 || viewIndex >= _viewToModel.Count)
-            return null;
-
-        int modelIndex = _viewToModel[viewIndex];
-        if (modelIndex < 0 || modelIndex >= _db.Items.Count)
-            return null;
-
-        return _db.Items[modelIndex];
-    }
-
-    // ====== 행 조작 (SerializedProperty 기반) ======
     private void AddRow()
     {
         if (_db == null)
@@ -496,36 +493,6 @@ public class CurrencyDatabaseWindow : EditorWindow
         _table.selectedIndex = _table.itemsSource.Count - 1;
     }
 
-    private void DuplicateSelected()
-    {
-        if (_db == null) return;
-        int sel = _table.selectedIndex;
-        if (sel < 0) return;
-
-        int modelIndex = _viewToModel[sel];
-
-        Undo.RecordObject(_db, "Duplicate Currency");
-
-        _so.Update();
-        SerializedProperty itemsProp = _so.FindProperty("items");
-        itemsProp.InsertArrayElementAtIndex(modelIndex);
-        _so.ApplyModifiedPropertiesWithoutUndo();
-
-        _so.Update();
-        SerializedProperty duplicated = _itemsProp.GetArrayElementAtIndex(modelIndex);
-
-        SerializedProperty titleProp = duplicated.FindPropertyRelative("title");
-        if (titleProp != null) titleProp.stringValue = (titleProp.stringValue ?? string.Empty) + " Copy";
-
-        _so.ApplyModifiedProperties();
-
-        MarkDirty();
-        RefreshView();
-
-        int newViewIndex = _viewToModel.IndexOf(modelIndex);
-        _table.selectedIndex = newViewIndex >= 0 ? newViewIndex : -1;
-    }
-
     private void DeleteSelected()
     {
         if (_db == null) return;
@@ -554,7 +521,6 @@ public class CurrencyDatabaseWindow : EditorWindow
         RefreshView();
     }
 
-    // ====== 유틸 ======
     private void ValidateTitles()
     {
         if (_db == null) return;
@@ -585,24 +551,5 @@ public class CurrencyDatabaseWindow : EditorWindow
     {
         if (_db != null)
             EditorUtility.SetDirty(_db);
-    }
-
-    private void CreateNewDatabase()
-    {
-        string dir = "Assets/Game/Data/Currency";
-        if (!Directory.Exists(dir))
-            Directory.CreateDirectory(dir);
-
-        CurrencyDatabaseSO asset = ScriptableObject.CreateInstance<CurrencyDatabaseSO>();
-        string path = AssetDatabase.GenerateUniqueAssetPath(Path.Combine(dir, "CurrencyDatabaseSO.asset"));
-        AssetDatabase.CreateAsset(asset, path);
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-
-        EditorUtility.FocusProjectWindow();
-        Selection.activeObject = asset;
-        BindDatabase(asset);
-
-        Debug.Log($"Created CurrencyDatabaseSO at: {path}");
     }
 }

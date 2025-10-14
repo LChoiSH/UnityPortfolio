@@ -13,7 +13,7 @@ public static class CurrencyDatabaseCreator
         if (!Directory.Exists(path)) Directory.CreateDirectory(path);
 
         var asset = ScriptableObject.CreateInstance<CurrencyDatabaseSO>();
-        var assetPath = AssetDatabase.GenerateUniqueAssetPath(Path.Combine(path, "CurrencyDatabase.asset"));
+        string assetPath = AssetDatabase.GenerateUniqueAssetPath(Path.Combine(path, "CurrencyDatabase.asset"));
 
         AssetDatabase.CreateAsset(asset, assetPath);
         AssetDatabase.SaveAssets();

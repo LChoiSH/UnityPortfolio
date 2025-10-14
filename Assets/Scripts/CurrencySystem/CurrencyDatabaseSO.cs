@@ -8,7 +8,6 @@ namespace CurrencySystem
     [CreateAssetMenu(fileName = "CurrencyDatabase", menuName = "Game/Currency Database")]
     public class CurrencyDatabaseSO : ScriptableObject
     {
-
         [SerializeField] private List<Currency> items = new List<Currency>();
 
         public IReadOnlyList<Currency> Items => items;

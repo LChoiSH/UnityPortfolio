@@ -12,13 +12,15 @@ public class CurrencyManager : MonoBehaviour, HaveSave, HaveLoad
     private static readonly string PATH = "/currencyData.json";
     public bool IsLoaded { get; private set; } = false;
 
-    [SerializeField] private Currency[] currencies;
+    // [SerializeField] private Currency[] currencies;
+    [SerializeField] private CurrencyDatabaseSO currencyDatabase;
 
     private CurrencyData currencyData;
     private Dictionary<string, Currency> currencyDic = new Dictionary<string, Currency>();
 
     public Sprite GetCurrencyImage(string currencyName) => currencyDic[currencyName].Icon;
     public Currency FindCurrencyByTitle(string title) => currencyDic.ContainsKey(title) ? currencyDic[title] : null;
+    public IReadOnlyList<Currency> Currencies => currencyDatabase.Items; 
 
     private void Awake()
     {
@@ -58,10 +60,8 @@ public class CurrencyManager : MonoBehaviour, HaveSave, HaveLoad
             currencyData = new CurrencyData();
         }
 
-        foreach (Currency currency in currencies)
+        foreach (Currency currency in currencyDatabase.Items)
         {
-            // TODO: remove regacy
-            // Currency madeCurrency = currency.Clone();
             Currency madeCurrency = currency;
 
             if (!currencyData.currencyStates.ContainsKey(currency.Title) || !currency.IsPermanent)
@@ -127,10 +127,12 @@ public class CurrencyManager : MonoBehaviour, HaveSave, HaveLoad
 
     public void RemoveActionCurrency(Currency currency, Action<long> action, bool isTotal = false) => RemoveActionCurrency(currency.Title, action, isTotal);
 
-    public void ResetCurrency(string currencyName)
+    public void ResetCurrency(Currency currency)
     {
-        if (currencyDic.ContainsKey(currencyName)) currencyDic[currencyName].ResetCurrency();
+        currency.ResetCurrency();
     }
+
+    public void ResetCurrency(string currencyName) => currencyDic[currencyName].ResetCurrency();
 
     [Button, EditorButton]
     public void ResetCurrencies()

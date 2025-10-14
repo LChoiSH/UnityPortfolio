@@ -7,7 +7,7 @@
 
 ## 🔎 Contents
 - **Core Systems**
-  - `CurrencySystem` — ScriptableObject **runtime clone**
+  - `CurrencySystem` — ScriptableObject Database, Editor UI Tool
   - `RoguelikeSystem` — Tiered effect gacha, duplicate handling, per-tier draws
   - `GachaSystem` — Weighted sampling, without-replacement sampling, rate export
   - `DeckSystem` — (WIP) deck & selection helpers
@@ -91,10 +91,10 @@ README.md
 - Author: **Seonghoon Choi**
 - Contact: csh42504@gmail.com
 - License: [MIT / Proprietary]
-- Shipped/Prototypes (selected code only): War and Peas, My Stellar Idle, Box Inc.
-
 ---
 
 ## 🗒 Changelog
-- 2025‑10‑01: initial upload
-- 2025‑10‑01: CalcSystem, CurrencySystem, DeckSystem, GachaSystem, RewardSystem, RoguelikeSystem
+- 2025‑10‑01: initial upload (CalcSystem, CurrencySystem, DeckSystem, GachaSystem, RewardSystem, RoguelikeSystem)
+- 2025-10-10: Editor Button(Use in inspector)
+- 2025-10-13: CurrencySystem Window
+- 2025-10-14: CurrencySystem Sample Scene
