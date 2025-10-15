@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using CurrencySystem;
-using UnityEditor.Animations;
 
 public class CurrencyCanvas : MonoBehaviour
 {

@@ -8,8 +8,8 @@
 ## 🔎 Contents
 - **Core Systems**
   - `CurrencySystem` — ScriptableObject Database, Editor UI Tool
-  - `RoguelikeSystem` — Tiered effect gacha, duplicate handling, per-tier draws
   - `GachaSystem` — Weighted sampling, without-replacement sampling, rate export
+  - `RoguelikeSystem` — Tiered effect gacha, duplicate handling, each tier gacha, multiple effect
   - `DeckSystem` — (WIP) deck & selection helpers
   - `RewardSystem` — (WIP) reward pipeline
 
@@ -19,7 +19,6 @@
 
 ## 🧩 Highlights
 - **SO Runtime Clone Pattern**: prevent asset pollution; UI only sees **read-only interfaces**.
-- **Auto-save Debounce (No Update polling)**: event-driven scheduling, optional **max wait** to guarantee flush.
 - **Data-driven & Testable**: pure logic separated from framework; clear seams for unit tests.
 - **Perf Hygiene**: no per-frame allocations; cached totals; safe event patterns.
 - **Security Hygiene**: no hardcoded secrets; production uses platform secure storage (Android Keystore / iOS Keychain / DPAPI).
@@ -83,6 +82,7 @@
     /RoguelikeSystem
     /Utils
       /Localization
+  /CSV
 README.md
 ```
 ---

@@ -1,0 +1,12 @@
+id,tier,title,effect,sprite_name,limit
+Damage Up (Common),Common,Damage + 10,Damage 10,,99
+AttackSpeed Up (Common),Common,Attack Speed + 1,AttackSpeed 1,,99
+MoveSpeed0,Common,Move Speed + 1,MoveSpeed 1,,99
+Damage Up (Rare),Rare,Damage + 50,Damage 50,,99
+AttackSpeed (Rare),Rare,Attack Speed + 5,AttackSpeed 5,,99
+MoveSpeed (Rare),Rare,Move Speed + 5,MoveSpeed 5,,99
+Damage (Unique),Unique,Damage + 100,Damage 100,,99
+AttackSpeed (Unique),Unique,Attack Speed + 10,AttackSpeed 10,,99
+MoveSpeed (Unique),Unique,Move Speed + 10,MoveSpeed 10,,99
+DamageAttackSpeed,Unique,Damage10 + AttackSpeed10,"Damage 10,AttackSpeed 10",,99
+DamageAttackSpeedMoveSpeed,Unique,Damage + AttackSpeed + MoveSpeed,"Damage 10,AttackSpeed 10,MoveSpeed 10",,99

@@ -86,18 +86,31 @@ public static class CSVReader
     public static async Task<List<Dictionary<string, object>>> ReadByAddressablePathAsync(string path)
     {
         var handle = Addressables.LoadAssetAsync<TextAsset>(path);
-        await handle.Task;
-
-        if (handle.Status == AsyncOperationStatus.Succeeded)
+        try
         {
-            TextAsset csvText = handle.Result;
-            List<Dictionary<string, object>> value = ReadCSV(csvText.text);
+            var asset = await handle.Task; // await 후 handle.Result와 동일
+            if (handle.Status != AsyncOperationStatus.Succeeded || asset == null)
+            {
+                Debug.LogError($"Failed to load CSV at {path} (status: {handle.Status})");
+                return null; // 필요하면 빈 리스트로 대체
+            }
+
+            // 에셋에 대한 의존 끊기 (문자열만 복사)
+            string text = asset.text;
+
+            // 여기서 파싱
+            var value = ReadCSV(text);
             return value;
         }
-        else
+        catch (Exception e)
         {
-            Debug.LogError($"Failed to load CSV at {path}");
+            Debug.LogError($"Exception while loading CSV at {path}\n{e}");
             return null;
+        }
+        finally
+        {
+            // 성공/실패 상관없이 해제 (핸들/의존 번들 정리)
+            Addressables.Release(handle);
         }
     }
 

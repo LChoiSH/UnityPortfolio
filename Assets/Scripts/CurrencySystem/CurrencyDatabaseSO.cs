@@ -12,9 +12,7 @@ namespace CurrencySystem
 
         public IReadOnlyList<Currency> Items => items;
 
-        // 런타임 조회 유틸
-        public Currency GetByTitle(string title)
-            => items.FirstOrDefault(x => x.Title == title);
+        public Currency GetByTitle(string title) => items.FirstOrDefault(x => x.Title == title);
 
         public bool TryGet(string title, out Currency def)
         {

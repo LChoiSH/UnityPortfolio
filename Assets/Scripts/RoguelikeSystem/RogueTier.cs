@@ -8,7 +8,6 @@ namespace RoguelikeSystem
     {
         Common = 0,
         Rare = 1,
-        Unique = 2,
-        Legend = 3
+        Unique = 2
     }
 }

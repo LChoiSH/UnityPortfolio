@@ -7,7 +7,6 @@ using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using CurrencySystem;
-using Codice.CM.Common.Matcher;
 
 public class CurrencyDatabaseWindow : EditorWindow
 {
@@ -533,9 +532,13 @@ public class CurrencyDatabaseWindow : EditorWindow
             .ToList();
 
         if (dups.Count > 0)
+        {
             EditorUtility.DisplayDialog("Duplicate Titles", "Change name \n" + string.Join("\n", dups), "OK");
+        }
         else
+        {
             EditorUtility.DisplayDialog("Validate", "OK (No duplicate Titles)", "Great");
+        }
     }
 
     private void SaveIfDirty()

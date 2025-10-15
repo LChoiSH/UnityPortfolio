@@ -19,17 +19,19 @@ namespace RoguelikeSystem
         public static void Damage(EffectArgs args)
         {
             // TODO: add damage code
+            LogPanel.Instance?.Log($"Click Damage {args.Str(0)}");
         }
 
         public static void AttackSpeed(EffectArgs args)
         {
-            // add attackspeed code
+            // TODO: add attackspeed code
+            LogPanel.Instance?.Log($"Click AttackSpeed {args.Str(0)}");
         }
 
         public static void MoveSpeed(EffectArgs args)
         {
-            // add movespeed code
-            // StatusManager.Instance.AddStatus(Status.MoveSpeed, new CalcFormula($"{Time.unscaledTime}_temp_rogueEffect", args.Int(0), MathCalc.AddInitialByPercent, true));
+            // TODO: add movespeed code
+            LogPanel.Instance?.Log($"Click MoveSpeed {args.Str(0)}");
         }
 
     }

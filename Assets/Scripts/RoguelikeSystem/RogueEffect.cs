@@ -31,9 +31,9 @@ namespace RoguelikeSystem
 
         public void Action()
         {
-            foreach(var constrict in constricts)
+            foreach (var constrict in constricts)
             {
-                if(!constrict.IsUsable()) return;
+                if (!constrict.IsUsable()) return;
             }
 
             foreach(var constrict in constricts)
@@ -61,10 +61,9 @@ namespace RoguelikeSystem
             RogueEffect clone = new RogueEffect();
 
             clone.id = id;
-            clone.title = this.title;
             clone.tier = this.tier;
+            clone.title = this.title;
 
-            // effects ?עק ???? ????
             if (this.effects != null)
             {
                 clone.effects = new RogueEffectPair[this.effects.Length];
@@ -108,13 +107,14 @@ namespace RoguelikeSystem
 
             effect.id = data["id"].ToString();
             effect.title = data["title"].ToString();
-            int limit = int.Parse(data["limit"].ToString());
+            int limit; 
+            if(!int.TryParse(data["limit"].ToString(), out limit)) limit = 0;
             effect.limit = limit == 0 ? 99 : limit;
 
-            //if (!System.Enum.TryParse(data["tier"].ToString(), out effect.tier))
-            //{
-            //    Debug.LogError($"{effect.title} Incorrect tier {data["tier"].ToString()}");
-            //}
+            if (!System.Enum.TryParse(data["tier"].ToString(), out effect.tier))
+            {
+               Debug.LogError($"{effect.id} Incorrect tier {data["tier"].ToString()}");
+            }
             effect.sprite = FindSprite(effect.id);
 
             string planeEffectStrings = data["effect"].ToString();
@@ -134,7 +134,7 @@ namespace RoguelikeSystem
                 RogueEffectPair newPair = new RogueEffectPair();
                 if (!System.Enum.TryParse(divideEffect[0], out newPair.effectCategory))
                 {
-                    Debug.LogError($"{effect.title} effectCategory error {divideEffect[0]}");
+                    Debug.LogError($"{effect.id} effectCategory error {divideEffect[0]}");
                 }
                 newPair.args = new EffectArgs(argsStrings);
 
