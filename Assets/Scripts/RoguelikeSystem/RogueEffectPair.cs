@@ -11,7 +11,7 @@ namespace RoguelikeSystem
         public RogueEffectCategory effectCategory;
         public EffectArgs args;
 
-        public RogueEffectPair() {}
+        public RogueEffectPair() { }
 
         public RogueEffectPair(RogueEffectCategory effectCategory, EffectArgs args)
         {

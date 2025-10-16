@@ -4,145 +4,112 @@ using System.Numerics;
 using Unity.VisualScripting;
 using UnityEngine;
 
-public class CalcValueDouble
+namespace CalcSystem
 {
-    [SerializeField] private double initialValue;
-
-    private List<CalcFormula> formulas = new List<CalcFormula>();
-
-    public double InitialValue => initialValue;
-
-    public double Value { get; private set; }
-
-#if UNITY_EDITOR
-    public List<CalcFormula> FormulasForDebug => formulas;
-#endif
-
-    public CalcValueDouble()
+    public class CalcValue
     {
+        private Dictionary<string, Formula> formulaDic = new();
+        private bool _dirty = false;
+        private double _cachedValue = 0;
 
-    }
+        // cached
+        private double initialValue = 0;
+        private double initialPercent = 0;
+        private double addPercent = 0;
+        private double addValue = 0;
+        private double multipleValue = 1;
 
-    public CalcValueDouble(double initialValue)
-    {
-        AddFormula(new CalcFormula("default", initialValue, MathCalc.AddInitial));
-    }
+        public bool allowMinusValue = false;
 
-    public void CalcReturn()
-    {
-        double returnVal = 0;
-        double newInitialValue = 0;
-
-        for (int i = 0; i < formulas.Count; i++)
+        public double Value
         {
-            switch (formulas[i].calc)
+            get
             {
-                case MathCalc.AddInitial:
-                    newInitialValue += formulas[i].value;
-                    returnVal += formulas[i].value;
-                    break;
-                case MathCalc.AddInitialByPercent:
-                    newInitialValue += newInitialValue * formulas[i].value * 0.01d;
-                    returnVal = newInitialValue;
-                    break;
-                case MathCalc.AddPercent:
-                    returnVal += newInitialValue * formulas[i].value * 0.01d;
-                    break;
-                case MathCalc.Multiple:
-                    returnVal *= formulas[i].value;
-                    break;
-                case MathCalc.Add:
-                    returnVal += formulas[i].value;
-                    break;
-            }
-
-            initialValue = newInitialValue;
-        }
-
-        Value = returnVal;
-    }
-
-    public void AddFormula(CalcFormula formula)
-    {
-        int aleady = -1;
-
-        for (int i = 0; i < formulas.Count; i++)
-        {
-            if (formulas[i].id == formula.id)
-            {
-                aleady = i;
-                break;
+                if (_dirty) CalcReturn();
+                return !allowMinusValue && _cachedValue < 0 ? 0 : _cachedValue;
             }
         }
 
-        if (aleady == -1)
+        public CalcValue()
         {
-            formulas.Add(formula);
-            SortFormula();
-        }
-        else
-        {
-            formulas[aleady] = formula;
+            AddFormula(new Formula("default", 0, Operator.AddInitial));
         }
 
-        CalcReturn();
-    }
-
-    public void RemoveFormula(string id)
-    {
-        for (int i = 0; i < formulas.Count; i++)
+        public CalcValue(double initialValue)
         {
-            if (formulas[i].id == id)
+            AddFormula(new Formula("default", initialValue, Operator.AddInitial));
+        }
+
+        public void CalcReturn()
+        {
+            double calcedInitial = initialValue * (1d + initialPercent * 0.01d) + addValue;
+
+            _cachedValue = calcedInitial * (1d + addPercent * 0.01d) * multipleValue;
+
+            _dirty = false;
+        }
+
+        public void AddFormula(string id, double value, Operator op)
+        {
+            AddFormula(new Formula(id, value, op));
+        }
+
+        public void AddFormula(Formula formula)
+        {
+            if (formulaDic.ContainsKey(formula.id)) RemoveFormula(formula.id);
+            if (formula.value == 0) return;
+
+            formulaDic[formula.id] = formula;
+
+            switch (formula.op)
             {
-                formulas.RemoveAt(i);
-
-                CalcReturn();
-                return;
+                case Operator.AddInitial:
+                    initialValue += formula.value;
+                    break;
+                case Operator.AddInitialByPercent:
+                    initialPercent += formula.value;
+                    break;
+                case Operator.AddPercent:
+                    addPercent += formula.value;
+                    break;
+                case Operator.Add:
+                    addValue += formula.value;
+                    break;
+                case Operator.Multiple:
+                    multipleValue *= formula.value;
+                    break;
             }
+
+            _dirty = true;
         }
-    }
 
-    private void SortFormula()
-    {
-        formulas.Sort((a, b) => a.calc.CompareTo(b.calc));
-    }
-
-    public void ClearTempFormula()
-    {
-        formulas.RemoveAll(f => f.isTemp);
-        CalcReturn();
-    }
-
-#if UNITY_EDITOR
-    public void CheckFormula()
-    {
-        for(int i = 0;i < formulas.Count;i++)
+        public void RemoveFormula(string id)
         {
-            Debug.Log(formulas[i]);
+            if (!formulaDic.ContainsKey(id)) return;
+            Formula formula = formulaDic[id];
+
+            switch (formula.op)
+            {
+                case Operator.AddInitial:
+                    initialValue -= formula.value;
+                    break;
+                case Operator.AddInitialByPercent:
+                    initialPercent -= formula.value;
+                    break;
+                case Operator.AddPercent:
+                    addPercent -= formula.value;
+                    break;
+                case Operator.Add:
+                    addValue -= formula.value;
+                    break;
+                case Operator.Multiple:
+                    multipleValue /= formula.value;
+                    break;
+            }
+
+            formulaDic.Remove(id);
+
+            _dirty = true;
         }
-    }
-#endif
-}
-
-public class CalcFormula
-{
-    public string id;
-    public double value;
-    public MathCalc calc;
-    public bool isTemp;
-
-    public CalcFormula(string id, double value, MathCalc calc, bool isTemp = false)
-    {
-        this.id = id;
-        this.value = value;
-        this.calc = calc;
-        this.isTemp = isTemp;
-    }
-
-    public override string ToString()
-    {
-        return $"{id} {value} {calc}";
     }
 }
-
-public enum MathCalc { Add = 4, Multiple = 3, AddPercent = 2, AddInitialByPercent = 1, AddInitial = 0}
