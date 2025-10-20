@@ -105,14 +105,12 @@ public class Reward
         return rewards;
     }
 
-    /// <param name="stage">플레이한 스테이지 번호(1부터)</param>
-    /// <param name="reachedWave">도달한 웨이브</param>
-    /// <param name="maxWave">해당 스테이지의 최종 웨이브</param>
-    /// <param name="baseReward">기본 보상(튜닝 기준점)</param>
-    /// <param name="stageSlope">스테이지 선형 증가율(예: 0.25 = 스테이지당 +25%)</param>
-    /// <param name="waveslope">웨이브 급격도(예: 4~6)</param>
-    /// <param name="minWaveFloor">초반 보상 하한(0~1, 예: 0.02 = 2%)</param>
-    /// <param name="clearBonus">최종 웨이브 클리어 보너스(예: 1.25)</param>
+    /// <param name="maxWave">stages last wave num</param>
+    /// <param name="baseReward">base reward</param>
+    /// <param name="stageSlope">increase by stage(ex. 0.25f -> per stage reward +25%)</param>
+    /// <param name="waveSlope">increase by wave(ex, )</param>
+    /// <param name="minWaveFloor">min reward</param>
+    /// <param name="clearBonus">last wave clear(=stage clear) bonus</param>
     private static float stageSlope = 0.25f;
     private static float waveSlope = 4.0f;
     public static float CalcRewardByStage(int stage, int reachedWave, int maxWave, float clearBonus = 1.2f)
@@ -126,10 +124,8 @@ public class Reward
 
         // exp는 double로 계산 후 float 캐스팅(정밀도/호환성)
         float p = Mathf.Clamp01((float)reachedWave / maxWave);
-        
         double denom = Math.Exp(waveSlope) - 1.0;
         float waveFactor = (float)((Math.Exp(waveSlope * p) - 1.0) / denom);
-        Debug.Log($"p: {p}, waveSlope: {waveSlope}, denom: {denom}, waveFactor: {waveFactor}");
 
         // 3) 클리어 보너스
         float bonus = (reachedWave >= maxWave) ? clearBonus : 1f;
@@ -140,9 +136,8 @@ public class Reward
         // 4) 최종
         float reward = stageFactor * waveFactor * bonus;
 
-        Debug.Log($"reward: {reward} {stageFactor} {waveFactor} {bonus}");
-
-        // return Mathf.Max(0, Mathf.RoundToInt(reward)); // 소수점 보상 싫으면 반올림
+        // 소수점 보상 싫으면 반올림
+        // return Mathf.Max(0, Mathf.RoundToInt(reward));
         return reward;
     }
 

@@ -10,8 +10,6 @@ public class LogPanel : MonoBehaviour
     public float duration = 3f;
     public float fadeOutTime = 1f;
 
-    //private List<LogItem> mades = new List<LogItem>();
-
     private void Awake()
     {
         if(Instance == null)
@@ -31,8 +29,6 @@ public class LogPanel : MonoBehaviour
         madeItem.SetMessage(message);
 
         StartCoroutine(DestroyItem(madeItem));
-
-        //mades.Add(madeItem);
     }
 
     public void LocalizingLog(string table, string key, params object[] args)

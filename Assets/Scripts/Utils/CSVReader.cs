@@ -12,28 +12,16 @@ using System.Threading;
 
 public static class CSVReader
 {
-    //static string SPLIT_RE = @",(?=(?:[^""]*""[^""]*"")*(?![^""]*""))";
-    //static string LINE_SPLIT_RE = @"\r\n|\n\r|\n|\r";
-    //static char[] TRIM_CHARS = { '\"', ',' };
-
 #if UNITY_EDITOR
     // only use in editor
     public static List<Dictionary<string, object>> ReadCSVInEditor(string filePath)
     {
         // 파일이 존재하는지 확인
-        //if (!File.Exists(filePath))
-        //{
-        //    Debug.LogWarning($"File not found at path: {filePath}");
-        //    return null;
-        //}
-
-        //// 파일의 모든 텍스트를 읽어 TextAsset으로 변환
-        ////string fileContent = File.ReadAllText(filePath);
-        //string fileContent = File.ReadAllText(filePath);
-
-        //List<Dictionary<string, object>> value = ReadCSV(fileContent);
-
-        //return value;
+        if (!File.Exists(filePath))
+        {
+           Debug.LogWarning($"File not found at path: {filePath}");
+           return null;
+        }
 
         Encoding enc = Encoding.UTF8;
         int retries = 5;
@@ -60,8 +48,6 @@ public static class CSVReader
         if (fileContent == "") return null;
         List<Dictionary<string, object>> value = ReadCSV(fileContent);
         return value;
-
-        //return null;
     }
 #endif
 
@@ -155,7 +141,7 @@ public static class CSVReader
         string line = reader.ReadLine();
         if (line == null) return null;
 
-        while (CountQuotes(line) % 2 != 0) // 따옴표가 홀수면 아직 안 닫힘
+        while (line.Count(c => c == '"') % 2 != 0) // 따옴표가 홀수면 아직 안 닫힘
         {
             string nextLine = reader.ReadLine();
             if (nextLine == null) break;
@@ -164,8 +150,6 @@ public static class CSVReader
 
         return line;
     }
-
-    private static int CountQuotes(string s) => s.Count(c => c == '"');
 
     // CSV 필드 파싱 (쉼표 구분 + 따옴표 제거)
     private static string[] ParseCSVLine(string line)

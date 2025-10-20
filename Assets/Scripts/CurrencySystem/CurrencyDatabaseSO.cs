@@ -21,17 +21,6 @@ namespace CurrencySystem
         }
 
 #if UNITY_EDITOR
-        //             // 에디터 편의: 새 통화 추가(자동 ID 발급)
-        //             [ContextMenu("Add New Currency")]
-        //             public void Editor_AddNewCurrency()
-        //             {
-        //                 var def = new Currency();
-        //                 def.SetIdIfEmpty(System.Guid.NewGuid().ToString("N")); // 32자리
-        //                 def.DisplayName = "New Currency";
-        //                 items.Add(def);
-        //                 EditorUtility.SetDirty(this);
-        //             }
-
         // 에디터 검증: ID 중복 등 간단 체크
         [ContextMenu("Validate")]
         public void Editor_Validate()
