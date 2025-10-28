@@ -1,9 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
-using VInspector;
 
 namespace UnitSystem
 {
@@ -11,45 +9,59 @@ namespace UnitSystem
     public class Unit : MonoBehaviour
     {
         [SerializeField] private string id;
-        [SerializeField] private Dictionary<Type, Attacker> moduleDic = new Dictionary<Type, Attacker>();
 
         protected UnitState state = UnitState.Idle;
         private int team;
         private Animator animator;
+        private Attacker attacker;
+        private Defender defender;
 
-        private Coroutine stunCoroutine;
-        private Coroutine nuckbackCoroutine;
-        private ParticleSystem stunEffect;
         private bool isRegister = false;
 
         public string Id => id;
         public int Team => team;
         public Animator Animator => animator;
-        public Attacker Attacker => moduleDic.ContainsKey(typeof(Attacker)) ? moduleDic[typeof(Attacker)] : null;
+        public Attacker Attacker => attacker;
+        public Defender Defender => defender;
         public UnitState State => state;
+
+        public event Action<Unit> onDeath;
+        public event Action<Unit> onDestroy;
 
         private void Awake()
         {
-            if (animator == null) animator = GetComponentInChildren<Animator>();
-        }
+            animator ??= GetComponentInChildren<Animator>();
 
-        private void Start()
-        {
-            if (!isRegister) UnitManager.Instance.Register(this);
+            attacker = GetComponent<Attacker>();
+            defender = GetComponent<Defender>();
+
+            if(Defender) Defender.onDeath += () => StartCoroutine(DeathAfterSeconds());
         }
 
         void Update()
         {
-            switch (state) {
+            switch (state)
+            {
                 case UnitState.Idle:
                     break;
                 case UnitState.Attack:
                     if (Attacker != null) Attacker.Attack();
                     break;
+                case UnitState.Death:
+                    break;
             }
         }
 
-        private void OnDestroy()
+        private void OnEnable()
+        {
+            if (!isRegister)
+            {
+                UnitManager.Instance.Register(this);
+                isRegister = true;
+            }
+        }
+
+        private void OnDisable()
         {
             UnitManager.Instance.Unregister(this);
         }
@@ -67,14 +79,34 @@ namespace UnitSystem
 
         public void SetState(UnitState state)
         {
+            if (this.state == state) return;
+
             switch (state)
             {
                 case UnitState.Attack:
                     if (Attacker == null) SetState(UnitState.Idle);
                     break;
+                case UnitState.Death:
+
+                    break;
             }
 
             this.state = state;
+        }
+
+        public IEnumerator DeathAfterSeconds(float duration = 2f)
+        {
+            SetState(UnitState.Death);
+            onDeath?.Invoke(this);
+
+            yield return new WaitForSeconds(2);
+
+            onDestroy?.Invoke(this);
+
+            yield return new WaitForSeconds(1);
+
+            // if dont have factory
+            Destroy(gameObject);
         }
     }
 }

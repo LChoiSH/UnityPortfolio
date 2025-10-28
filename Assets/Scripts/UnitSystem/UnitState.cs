@@ -4,6 +4,7 @@ namespace UnitSystem
     {
         Idle,
         Attack,
-        Etc
+        Etc,
+        Death
     }
 }

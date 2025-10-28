@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,21 +22,20 @@ public class UnitManager : MonoBehaviour
         }
     }
 
-    [SerializeField] private List<Unit> units;
-    
+    [SerializeField] private UnitFactory unitFactory;
+  
     private Dictionary<int, List<Unit>> madeUnits = new Dictionary<int, List<Unit>>();
 
-    public List<Unit> Units => units;
-    public List<Unit> MadeUnits => madeUnits.Values.SelectMany(unitList => unitList).ToList();
-    public List<Unit> GetTeamUnits(int teamNumber) => madeUnits[teamNumber].Where(unit => unit.gameObject.activeInHierarchy).ToList(); 
-    public List<Unit> GetEnemyUnits(int teamNumber) => madeUnits.Where(pair => pair.Key != teamNumber).SelectMany(pair => pair.Value).Where(unit => unit.gameObject.activeInHierarchy).ToList();
-    public List<Unit> GetUnitsById(int teamNumber, string unitId) => madeUnits[teamNumber].FindAll(made => made.Id == unitId);
+    public IEnumerable<Unit> MadeUnits => madeUnits.Values.SelectMany(unitList => unitList);
+    public IEnumerable<Unit> GetTeamUnits(int teamNumber) => madeUnits.TryGetValue(teamNumber, out var teamUnits) ? teamUnits : null;
+    public IEnumerable<Unit> GetEnemyUnits(int teamNumber) => madeUnits.Where(pair => pair.Key != teamNumber).SelectMany(pair => pair.Value);
+    public List<Unit> GetUnitsById(int teamNumber, string unitId) => madeUnits.TryGetValue(teamNumber, out var teamUnits) ? teamUnits.FindAll(unit => unit.Id == unitId) : null;
     public int TeamCount(int team) => madeUnits.ContainsKey(team) ? madeUnits[team].Count : 0;
+    public UnitFactory UnitFactory => unitFactory;
 
-    public System.Action<Unit> onUnitMade;
-    public System.Action<Unit> onUnitDestroy;
-    public System.Action<Unit> onUnitMerged;
-    public System.Action<int> onTeamCountChanged;
+    public event Action<Unit> onUnitRegister;
+    public event Action<Unit> onUnitUnregister;
+    public event Action<int> onTeamCountChanged;
 
     private void Awake()
     {
@@ -57,16 +57,17 @@ public class UnitManager : MonoBehaviour
         
         madeUnits[unit.Team].Add(unit);
 
-        onUnitMade?.Invoke(unit);
+        onUnitRegister?.Invoke(unit);
+        onTeamCountChanged?.Invoke(unit.Team);
     }
 
     public void Unregister(Unit unit)
     {
         if (!madeUnits.ContainsKey(unit.Team)) return;
-       
+
         madeUnits[unit.Team].Remove(unit);
 
-        onUnitDestroy?.Invoke(unit);
+        onUnitUnregister?.Invoke(unit);
         onTeamCountChanged?.Invoke(unit.Team);
     }
 
