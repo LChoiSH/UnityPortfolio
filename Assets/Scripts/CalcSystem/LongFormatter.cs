@@ -5,18 +5,18 @@ public static class LongFormatter
 
     public static string FormatLong(this long value, int dec = 1)
     {
-        // 기본 단위 (예: "")
+        // Start with base unit (empty string)
         int unitIndex = 0;
         double doubleValue = (double)value;
 
-        // 단위 변환
+        // Convert to higher units
         while (unitIndex < units.Length - 1 && doubleValue >= 1000)
         {
             doubleValue /= 1000;
             unitIndex++;
         }
 
-        // 소수점 첫째 자리까지 표현
+        // Round to specified decimal places
         Decimal decimalValue = Math.Round((decimal)doubleValue, dec);
 
         return $"{decimalValue}{units[unitIndex]}";
@@ -24,18 +24,18 @@ public static class LongFormatter
 
     public static string FormatLong(this int value, int dec = 1)
     {
-        // 기본 단위 (예: "")
+        // Start with base unit (empty string)
         int unitIndex = 0;
         decimal decimalValue = (decimal)value;
 
-        // 단위 변환
+        // Convert to higher units
         while (unitIndex < units.Length - 1 && decimalValue >= 1000)
         {
             decimalValue /= 1000;
             unitIndex++;
         }
 
-        // 소수점 첫째 자리까지 표현
+        // Round to specified decimal places
         decimalValue = Math.Round(decimalValue, dec);
 
         return $"{decimalValue}{units[unitIndex]}";
