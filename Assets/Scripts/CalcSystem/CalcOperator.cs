@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace CalcSystem
 {
-    public enum Operator
+    public enum CalcOperator
     {
         Add = 40,
         Multiple = 30,

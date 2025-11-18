@@ -5,23 +5,26 @@ using UnityEngine;
 
 namespace CalcSystem
 {
-    public class Formula
+    /// <summary>
+    /// Immutable value object representing a calculation formula.
+    /// Uses readonly struct for value semantics and guaranteed immutability.
+    /// </summary>
+    public readonly struct CalcFormula
     {
-        public string id;
-        public double value;
-        public Operator op;
-        public int order = 0;
+        public string Id { get; }
+        public double Value { get; }
+        public CalcOperator Op { get; }
 
-        public Formula(string id, double value, Operator op)
+        public CalcFormula(string id, double value, CalcOperator op)
         {
-            this.id = id;
-            this.value = value;
-            this.op = op;
+            Id = id;
+            Value = value;
+            Op = op;
         }
 
         public override string ToString()
         {
-            return $"{id} {value} {op}";
+            return $"{Id} {Value} {Op}";
         }
     }
 }
