@@ -85,7 +85,7 @@ namespace CalcSystem
             multipleValue = 1.0d;
 
             // Rebuild caches from dictionary
-            foreach (var formula in formulaDic.Values)
+            foreach (CalcFormula formula in formulaDic.Values)
             {
                 switch (formula.Op)
                 {
