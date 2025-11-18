@@ -9,21 +9,27 @@ namespace UnitSystem
     public class Unit : MonoBehaviour
     {
         [SerializeField] private string id;
+        [SerializeField] private UnitStat stat = new UnitStat();
+        [SerializeField] private UnitType unitType = UnitType.Default;
 
-        protected UnitState state = UnitState.Idle;
+        private UnitStateMachine stateMachine;
         private int team;
         private Animator animator;
         private Attacker attacker;
+        private Mover mover;
         private Defender defender;
 
         private bool isRegister = false;
 
         public string Id => id;
         public int Team => team;
+        public UnitStat Stat => stat;
         public Animator Animator => animator;
         public Attacker Attacker => attacker;
         public Defender Defender => defender;
-        public UnitState State => state;
+        public Mover Mover => mover;
+        public UnitState State => stateMachine?.CurrentStateType ?? UnitState.Idle;
+        public UnitStateMachine StateMachine => stateMachine;
 
         public event Action<Unit> onDeath;
         public event Action<Unit> onDestroy;
@@ -34,22 +40,29 @@ namespace UnitSystem
 
             attacker = GetComponent<Attacker>();
             defender = GetComponent<Defender>();
+            mover = GetComponent<Mover>();
 
-            if(Defender) Defender.onDeath += () => StartCoroutine(DeathAfterSeconds());
+            // State Machine 초기화
+            stateMachine = new UnitStateMachine(this);
+            stateMachine.Initialize(unitType);
+
+            if(Defender) Defender.onDeath += OnDefenderDeath;
         }
 
-        void Update()
+        private void OnDestroy()
         {
-            switch (state)
-            {
-                case UnitState.Idle:
-                    break;
-                case UnitState.Attack:
-                    if (Attacker != null) Attacker.Attack();
-                    break;
-                case UnitState.Death:
-                    break;
-            }
+            if(Defender) Defender.onDeath -= OnDefenderDeath;
+        }
+
+        private void OnDefenderDeath()
+        {
+            StartCoroutine(DeathAfterSeconds());
+        }
+
+        private void Update()
+        {
+            // State Machine 업데이트
+            stateMachine?.Update();
         }
 
         private void OnEnable()
@@ -77,21 +90,20 @@ namespace UnitSystem
             }
         }
 
-        public void SetState(UnitState state)
+        /// <summary>
+        /// 상태 변경 (StateMachine으로 위임)
+        /// </summary>
+        public void SetState(UnitState newState)
         {
-            if (this.state == state) return;
+            stateMachine?.ChangeState(newState);
+        }
 
-            switch (state)
-            {
-                case UnitState.Attack:
-                    if (Attacker == null) SetState(UnitState.Idle);
-                    break;
-                case UnitState.Death:
-
-                    break;
-            }
-
-            this.state = state;
+        /// <summary>
+        /// 상태 강제 변경 (전환 검증 무시)
+        /// </summary>
+        public void ForceSetState(UnitState newState)
+        {
+            stateMachine?.ChangeState(newState, forceTransition: true);
         }
 
         public IEnumerator DeathAfterSeconds(float duration = 2f)
