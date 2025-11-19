@@ -15,7 +15,7 @@ namespace RoguelikeSystem
         public string title;
         public RogueTier tier;
         public RogueEffectPair[] effects;
-        public List<RogueConstrict> constricts;
+        public List<RogueConstrictData> constricts;
 
         public Sprite sprite;
         public int limit = 99;
@@ -31,16 +31,24 @@ namespace RoguelikeSystem
 
         public void Action()
         {
-            foreach (var constrict in constricts)
+            // Check all constraints before execution
+            foreach (var constrictData in constricts)
             {
-                if (!constrict.IsUsable()) return;
+                IConstrictStrategy strategy = RogueConstrictRegistry.GetStrategy(constrictData.type);
+                if (!strategy.IsUsable(constrictData.name, constrictData.needAmount))
+                {
+                    return;
+                }
             }
 
-            foreach(var constrict in constricts)
+            // Execute all constraint after-actions (e.g., consume resources)
+            foreach (var constrictData in constricts)
             {
-                constrict.UseConstrict();
+                IConstrictStrategy strategy = RogueConstrictRegistry.GetStrategy(constrictData.type);
+                strategy.AfterAction(constrictData.name, constrictData.needAmount);
             }
 
+            // Execute effects
             foreach(var pair in effects)
             {
                 pair.Action();
@@ -81,20 +89,15 @@ namespace RoguelikeSystem
 
             if(constricts != null)
             {
-                clone.constricts = new List<RogueConstrict>();
-
-                for(int i = 0;i< constricts.Count;i++)
-                {
-                    clone.constricts.Add(constricts[i].Clone());
-                }
+                clone.constricts = new List<RogueConstrictData>(constricts);
             }
 
-            clone.sprite = this.sprite; // Sprite?? ???? ???? ???
+            clone.sprite = this.sprite; // Sprite is a reference type but doesn't need deep copy
             clone.limit = this.limit;
             clone.value = this.value;
             clone.currentLimit = this.currentLimit;
 
-            // Action?? ???? ?? ??
+            // onAction should not be cloned
             clone.onAction = null;
 
             return clone;
@@ -167,7 +170,7 @@ namespace RoguelikeSystem
             }
             else
             {
-                Debug.LogWarning($"{assetKey} is not hear");
+                Debug.LogWarning($"{assetKey} is not here");
             }
 
             return null;
