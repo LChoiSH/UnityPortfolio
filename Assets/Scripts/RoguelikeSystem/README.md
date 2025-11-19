@@ -64,36 +64,55 @@ damageBoost.Action();
 RoguelikeSystem/
 │
 ├── Constrict/                         # 제약 검증 및 리소스 소비
-│   ├── Strategies/
-│   │   ├── IConstrictStrategy.cs       # 제약 인터페이스 (Default 구현 포함)
-│   │   ├── CurrencyConstrictStrategy.cs  # 재화 검증 + 소비
-│   │   ├── LevelConstrictStrategy.cs     # 레벨 체크만 (소비 없음)
-│   │   └── UnitConstrictStrategy.cs      # 유닛 보유 체크 (소비 없음)
-│   └── RogueConstrictRegistry.cs        # Singleton 전략 캐시
+│   ├── Strategies/                     # 제약 전략 구현체들
+│   │   ├── IConstrictStrategy.cs
+│   │   └── ... (Currency, Level, Unit)
+│   └── RogueConstrictRegistry.cs
 │
 ├── Effect/                            # 효과 실행 시스템
-│   ├── Strategies/
-│   │   ├── IEffectStrategy.cs           # 효과 실행 인터페이스
-│   │   ├── DamageEffectStrategy.cs      # 데미지 변경
-│   │   ├── AttackSpeedEffectStrategy.cs # 공격속도 변경
-│   │   └── MoveSpeedEffectStrategy.cs   # 이동속도 변경
-│   ├── RogueEffectRegistry.cs          # 중앙집중식 효과 실행 + 에러 처리
-│   ├── RogueEffectCategory.cs          # 효과 타입 Enum
-│   └── RogueEffectPair.cs              # 효과 카테고리 + 인자
+│   ├── Strategies/                     # 효과 전략 구현체들
+│   │   ├── IEffectStrategy.cs
+│   │   └── ... (Damage, AttackSpeed, MoveSpeed)
+│   ├── RogueEffectRegistry.cs
+│   ├── RogueEffectCategory.cs
+│   └── RogueEffectPair.cs
 │
 ├── Core/                              # 핵심 데이터 구조
-│   ├── RogueEffect.cs                  # 메인 효과 컨테이너 (Action 메서드)
-│   ├── RogueConstrictData.cs           # 제약 데이터 (struct)
-│   ├── RogueTier.cs                    # 효과 등급 (Common, Rare, Unique)
-│   └── RoguelikeGachaPool.cs           # 등급 기반 가챠 시스템
+│   ├── RogueEffect.cs
+│   ├── RogueConstrictData.cs
+│   ├── RogueTier.cs
+│   └── RoguelikeGachaPool.cs
 │
 └── Sample/                            # 샘플 및 테스트
 ```
 
-**핵심 파일:**
-- [`RogueEffect.cs`](Core/RogueEffect.cs): 제약 검증 → 리소스 소비 → 효과 실행 파이프라인
-- [`RogueEffectRegistry.cs`](Effect/RogueEffectRegistry.cs): Strategy 캐싱 및 실행
-- [`IConstrictStrategy.cs`](Constrict/Strategies/IConstrictStrategy.cs): C# 8.0 Default 구현 활용
+### 핵심 파일
+
+**[`RogueEffect.cs`](Core/RogueEffect.cs)**
+- 효과의 메인 컨테이너
+- `Action()`: 제약 검증 → 리소스 소비 → 효과 실행 파이프라인
+- `Clone()`: 가챠 풀용 깊은 복사
+- CSV 데이터를 런타임 인스턴스로 변환
+
+**[`RogueEffectRegistry.cs`](Effect/RogueEffectRegistry.cs)**
+- 효과 Strategy들의 중앙 관리자
+- Singleton 패턴으로 전략 캐싱 (GC 없음)
+- 중앙집중식 에러 처리 및 로깅
+
+**[`RogueConstrictRegistry.cs`](Constrict/RogueConstrictRegistry.cs)**
+- 제약 Strategy들의 중앙 관리자
+- `GetStrategy()`: 타입별 전략 조회
+- Singleton 캐싱으로 런타임 할당 제거
+
+**[`IConstrictStrategy.cs`](Constrict/Strategies/IConstrictStrategy.cs)**
+- 제약 전략 인터페이스
+- C# 8.0 Default Interface Implementation 활용
+- `AfterAction()`: 선택적 리소스 소비 (기본 구현: 아무것도 안 함)
+
+**[`RogueConstrictData.cs`](Core/RogueConstrictData.cs)**
+- 제약 데이터 (struct)
+- 성능: 연속 메모리, GC 없음, 캐시 지역성 향상
+- 3 필드 (type, name, needAmount)
 
 ---
 
@@ -229,62 +248,28 @@ aspd_boost_1,공속 증가 I,Rare,"AttackSpeed 1.2",5
 
 ## 아키텍처
 
-### 시스템 플로우
+### 실행 플로우
 
-```
-┌─────────────────┐
-│  RogueEffect    │  (데이터: id, tier, effects[], constricts[])
-└────────┬────────┘
-         │
-         │ .Action()
-         ▼
-    ┌────────────────────────────┐
-    │ 1. 제약 검증                │
-    │    foreach constrict:      │
-    │      strategy.IsUsable()   │◄─── RogueConstrictRegistry
-    └────────────────────────────┘
-         │ 모두 통과?
-         ▼
-    ┌────────────────────────────┐
-    │ 2. 리소스 소비              │
-    │    foreach constrict:      │
-    │      strategy.AfterAction()│◄─── RogueConstrictRegistry
-    └────────────────────────────┘
-         │
-         ▼
-    ┌────────────────────────────┐
-    │ 3. 효과 실행                │
-    │    foreach effect:         │
-    │      strategy.Execute()    │◄─── RogueEffectRegistry
-    └────────────────────────────┘
-         │
-         ▼
-    ┌────────────────────────────┐
-    │ 4. 콜백 트리거              │
-    │    onAction?.Invoke()      │
-    └────────────────────────────┘
-```
+[`RogueEffect.Action()`](Core/RogueEffect.cs) 호출 시:
 
-### 클래스 다이어그램
+1. **제약 검증** - 각 제약의 `IsUsable()` 체크 → 하나라도 실패 시 조기 종료
+2. **리소스 소비** - 각 제약의 `AfterAction()` 실행 (선택적)
+3. **효과 실행** - 각 효과의 `Execute()` 실행
+4. **콜백 트리거** - `onAction` 이벤트 발생
+
+### 의존성 관계
 
 ```
 RogueEffect
-  ├─ RogueEffectPair[] effects
-  │    └─ RogueEffectCategory + EffectArgs
-  │         └─ RogueEffectRegistry.EffectAction()
-  │              └─ IEffectStrategy.Execute()
-  │
-  └─ RogueConstrictData[] constricts
-       └─ RogueConstrictType + name + needAmount
-            └─ RogueConstrictRegistry.GetStrategy()
-                 └─ IConstrictStrategy.IsUsable() / AfterAction()
+  ├─ RogueEffectPair[] → RogueEffectRegistry → IEffectStrategy
+  └─ RogueConstrictData[] → RogueConstrictRegistry → IConstrictStrategy
 ```
 
 ---
 
 ## 주요 컴포넌트
 
-### RogueEffect (Core/RogueEffect.cs)
+### [`RogueEffect`](Core/RogueEffect.cs)
 
 **역할**: 제약 검증 → 리소스 소비 → 효과 실행 파이프라인을 관리하는 메인 효과 컨테이너
 
@@ -294,41 +279,41 @@ RogueEffect
 - `DescriptionText()` - 현지화된 효과 설명
 
 **주요 필드**:
-- `RogueEffectPair[] effects` - 효과 내용
-- `List<RogueConstrictData> constricts` - 사용 요구사항
+- [`RogueEffectPair[]`](Effect/RogueEffectPair.cs) `effects` - 효과 내용
+- [`RogueConstrictData[]`](Core/RogueConstrictData.cs) `constricts` - 사용 요구사항
 
 ---
 
-### IEffectStrategy (Effect/Strategies/IEffectStrategy.cs)
+### [`IEffectStrategy`](Effect/Strategies/IEffectStrategy.cs)
 
 **역할**: 모든 효과 구현체의 인터페이스
 
-**구현체**:
-- `DamageEffectStrategy` - 플레이어/적 데미지 변경
-- `AttackSpeedEffectStrategy` - 공격 속도 변경
-- `MoveSpeedEffectStrategy` - 이동 속도 변경
+**구현 예시**:
+- `DamageEffectStrategy` - 데미지 증가/감소
+- `AttackSpeedEffectStrategy` - 공격속도 배율 변경
+- `MoveSpeedEffectStrategy` - 이동속도 배율 변경
 
 **새 효과 추가 방법**:
-1. `IEffectStrategy` 구현 클래스 생성
-2. `RogueEffectCategory` enum에 추가
-3. `RogueEffectRegistry.strategyCache`에 등록
+1. [`IEffectStrategy`](Effect/Strategies/IEffectStrategy.cs) 구현 클래스 생성
+2. [`RogueEffectCategory`](Effect/RogueEffectCategory.cs) enum에 추가
+3. [`RogueEffectRegistry`](Effect/RogueEffectRegistry.cs)에 등록
 
 ---
 
-### IConstrictStrategy (Constrict/Strategies/IConstrictStrategy.cs)
+### [`IConstrictStrategy`](Constrict/Strategies/IConstrictStrategy.cs)
 
 **역할**: 제약 검증 및 리소스 소비 인터페이스
 
-**구현체**:
-- `CurrencyConstrictStrategy` - 재화 검증, 사용 시 소비
-- `LevelConstrictStrategy` - 플레이어 레벨 체크 (소비 없음)
-- `UnitConstrictStrategy` - 유닛 보유 확인 (소비 없음)
+**구현 예시**:
+- `CurrencyConstrictStrategy` - 재화 검증 + 소비
+- `LevelConstrictStrategy` - 플레이어 레벨 체크만 (소비 없음)
+- `UnitConstrictStrategy` - 유닛 보유 체크만 (소비 없음)
 
 **설계 특징**: C# 8.0+ Default 구현으로 선택적 리소스 소비 가능
 
 ---
 
-### RogueEffectRegistry (Effect/RogueEffectRegistry.cs)
+### [`RogueEffectRegistry`](Effect/RogueEffectRegistry.cs)
 
 **역할**: 중앙집중식 효과 전략 관리 및 실행
 
@@ -339,7 +324,7 @@ RogueEffect
 
 ---
 
-### RogueConstrictData (Core/RogueConstrictData.cs)
+### [`RogueConstrictData`](Core/RogueConstrictData.cs)
 
 **역할**: 경량 제약 데이터 (struct로 성능 최적화)
 
@@ -399,9 +384,9 @@ expensiveUpgrade.Action();
 
 ## 확장 방법
 
-### 새 효과 타입 추가하기
+### 새 효과 타입 추가하기 (예시: 크리티컬 확률)
 
-**1. Enum 추가** (`Effect/RogueEffectCategory.cs`)
+**1. Enum 추가** - [`RogueEffectCategory.cs`](Effect/RogueEffectCategory.cs)
 ```csharp
 public enum RogueEffectCategory
 {
@@ -412,7 +397,7 @@ public enum RogueEffectCategory
 }
 ```
 
-**2. 전략 클래스 생성** (`Effect/Strategies/CriticalRateEffectStrategy.cs`)
+**2. 전략 클래스 생성** - `Effect/Strategies/CriticalRateEffectStrategy.cs`
 ```csharp
 namespace RoguelikeSystem
 {
@@ -429,7 +414,7 @@ namespace RoguelikeSystem
 }
 ```
 
-**3. Registry에 등록** (`Effect/RogueEffectRegistry.cs`)
+**3. Registry에 등록** - [`RogueEffectRegistry.cs`](Effect/RogueEffectRegistry.cs)
 ```csharp
 private static readonly Dictionary<RogueEffectCategory, IEffectStrategy> strategyCache
     = new Dictionary<RogueEffectCategory, IEffectStrategy>
@@ -447,13 +432,13 @@ id,title,tier,effect,limit
 crit_boost_1,크리티컬 I,Rare,"CriticalRate 10",99
 ```
 
-**완료!** `RogueEffect` 수정 없음, switch 문 없음. Open-Closed Principle 실현.
+**완료!** [`RogueEffect`](Core/RogueEffect.cs) 수정 없음, switch 문 없음. Open-Closed Principle 실현.
 
 ---
 
-### 새 제약 타입 추가하기
+### 새 제약 타입 추가하기 (예시: 퀘스트 완료)
 
-**1. Enum 추가** (`Core/RogueConstrictData.cs`)
+**1. Enum 추가** - [`RogueConstrictData.cs`](Core/RogueConstrictData.cs)
 ```csharp
 public enum RogueConstrictType
 {
@@ -464,7 +449,7 @@ public enum RogueConstrictType
 }
 ```
 
-**2. 전략 클래스 생성** (`Constrict/Strategies/QuestConstrictStrategy.cs`)
+**2. 전략 클래스 생성** - `Constrict/Strategies/QuestConstrictStrategy.cs`
 ```csharp
 public class QuestConstrictStrategy : IConstrictStrategy
 {
@@ -478,7 +463,7 @@ public class QuestConstrictStrategy : IConstrictStrategy
 }
 ```
 
-**3. Registry에 등록** (`Constrict/RogueConstrictRegistry.cs`)
+**3. Registry에 등록** - [`RogueConstrictRegistry.cs`](Constrict/RogueConstrictRegistry.cs)
 ```csharp
 private static readonly Dictionary<RogueConstrictType, IConstrictStrategy> strategyCache
     = new Dictionary<RogueConstrictType, IConstrictStrategy>
