@@ -2,8 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+#if UNITY_EDITOR
 using UnityEditor;
-using UnityEditor.Rendering;
+#endif
 
 namespace RoguelikeSystem
 {
@@ -140,7 +141,7 @@ namespace RoguelikeSystem
 
             if (CSV == null)
             {
-                Debug.LogError("There are not csv");
+                Debug.LogError("CSV file not found");
                 return;
             }
 

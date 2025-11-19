@@ -134,8 +134,7 @@ namespace CalcSystem
             }
 
             // Skip neutral elements (0 for add operations, 1 for multiply)
-            if (IsNeutralElement(formula.Op, formula.Value))
-                return;
+            if (IsNeutralElement(formula.Op, formula.Value)) return;
 
             formulaDic[formula.Id] = formula;
             _dirty = true;
