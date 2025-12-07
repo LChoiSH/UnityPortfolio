@@ -32,18 +32,8 @@ UnitSystem은 게임 내 유닛의 **상태 관리**, **전투 시스템**, **�
 
 ## 디렉토리 구조
 
-```
-UnitSystem/
-├── Core/                   # Unit, UnitStat, UnitState (Enum)
-├── States/                 # State Pattern 관련 (9개 파일)
-├── Components/             # Attacker, Defender, Mover
-├── Modifiers/              # Hit/Heal Modifier 시스템
-├── Management/             # UnitFactory, UnitManager
-└── Sample/                 # 예제 및 테스트
-```
-
 <details>
-<summary><b>상세 구조 보기</b></summary>
+<summary><b>펼쳐보기</b></summary>
 
 ```
 UnitSystem/
@@ -86,199 +76,23 @@ UnitSystem/
 
 ## 적용된 디자인 패턴
 
-### 1. State Pattern ⭐
+이 시스템에 적용된 주요 패턴들입니다. 각 패턴의 구체적인 설계 결정과 Trade-off는 [기술적 의사결정](#기술적-의사결정) 섹션에서 확인할 수 있습니다.
 
-**목적:** 유닛의 상태별 행동을 캡슐화하여 상태 전환을 명확하게 관리
+| 패턴 | 적용 위치 | 목적 |
+|------|----------|------|
+| **State Pattern** | States/ | 상태별 행동 캡슐화, 명확한 상태 전환 관리 |
+| **Template Method** | UnitStateBase | 공통 로직 자동화, 서브클래스는 커스텀 로직만 구현 |
+| **Factory Pattern** | UnitStateFactory, UnitFactory | 유닛 타입별 다른 상태 조합, Object Pooling |
+| **Modifier (Chain of Responsibility)** | IHitModifier, IHealModifier | 버프/디버프 동적 추가/제거, Phase/Priority 정렬 |
+| **Component Pattern** | Attacker, Defender, Mover | 기능별 분리, 단일 책임 원칙 |
+| **Event-Driven Architecture** | 모든 컴포넌트 | 느슨한 결합, 다중 구독 가능 |
+| **Singleton** | UnitManager | 전역 유닛 관리, 팀별 유닛 조회 |
+| **Object Pooling** | UnitFactory | GC 부하 감소, 성능 최적화 |
 
-**구현:**
-- `IUnitState` 인터페이스로 상태 계약 정의
-- `UnitStateBase` 추상 클래스로 공통 로직 제공 (Template Method Pattern)
-- 각 상태(Idle, Attack, Move, Death)를 독립적인 클래스로 구현
-- `UnitStateMachine`이 상태 전환 및 검증 담당
+**⚠️ 현재 구현 상태:**
+- `Boss`와 `Ranged` 유닛은 기본 상태와 동일한 세트를 사용합니다 (Factory Pattern의 확장성 시연용 구조)
+- 실제 게임에서는 Boss 전용 상태(`BossSkillState`, `EnrageState` 등) 추가 가능
 
-**장점:**
-- 새로운 상태 추가 시 기존 코드 수정 불필요 (Open-Closed Principle)
-- 각 상태의 로직이 명확히 분리 (Single Responsibility Principle)
-- 잘못된 상태 전환 방지 (`CanTransitionTo`)
-
-**코드 예시:**
-```csharp
-// 상태 전환
-unit.SetState(UnitState.Attack);
-
-// StateMachine이 자동으로:
-// 1. 전환 가능 여부 검증
-// 2. 현재 상태 Exit
-// 3. 새 상태 Enter (애니메이션 자동 재생)
-```
-
-**전투 시스템 흐름:**
-```
-Attacker.Attack(defender)
-    ↓
-Hit 생성 → Attacker Modifiers 적용 (정렬)
-    ↓
-Defender.Damaged(hit) → Defender Modifiers 적용 (정렬)
-    ↓
-HP 감소 → 이벤트 발생 → Post Callbacks 실행
-```
-
-**State Machine 흐름:**
-```
-Initialize(unitType) → Factory로 State 생성 → 등록 → Idle로 시작
-    ↓
-매 프레임: Update() → CurrentState.Update(unit)
-```
-
----
-
-### 2. Template Method Pattern
-
-**목적:** 상태의 실행 흐름은 베이스 클래스에서 정의하고, 세부 구현은 서브클래스에서 처리
-
-**구현:**
-```csharp
-// UnitStateBase.cs
-public virtual void Enter(Unit unit)
-{
-    // 1. 애니메이션 재생 (공통)
-    unit.Animator.SetTrigger(StateType.ToString());
-
-    // 2. 서브클래스의 커스텀 로직 호출
-    OnEnter(unit);
-}
-
-protected virtual void OnEnter(Unit unit) { }  // 서브클래스가 오버라이드
-```
-
-**장점:**
-- 애니메이션 재생 등 공통 로직이 자동 실행
-- 서브클래스는 `OnEnter`, `OnUpdate`, `OnExit`만 구현하면 됨
-- 코드 중복 제거
-
----
-
-### 3. Factory Pattern ⭐
-
-**목적:** 유닛 타입에 따라 다른 State 조합을 제공
-
-**구현:**
-```csharp
-// UnitStateFactory.cs
-public static IEnumerable<IUnitState> CreateStates(UnitType unitType)
-{
-    switch (unitType)
-    {
-        case UnitType.Boss:
-            return CreateBossStates();  // Boss 전용 상태 세트
-        case UnitType.Ranged:
-            return CreateRangedStates();  // 원거리 유닛 상태 세트
-        default:
-            return CreateDefaultStates();  // 기본 상태 세트
-    }
-}
-```
-
-**장점:**
-- 유닛 타입별로 다른 상태 조합 가능
-- 새 유닛 타입 추가 시 Factory만 수정 (Open-Closed Principle)
-- 객체 생성 로직 중앙화
-
----
-
-### 4. Modifier Pattern (Chain of Responsibility)
-
-**목적:** 데미지/힐에 다양한 수정자(버프/디버프)를 체인 형태로 적용
-
-**구현:**
-```csharp
-// Attacker에서 공격자의 Modifier 적용
-var sortedModifiers = attackModifiers
-    .OrderBy(m => m.Phase)         // Phase별 정렬
-    .ThenByDescending(m => m.Priority);  // Priority 정렬
-
-foreach (var modifier in sortedModifiers)
-{
-    hit = modifier.Apply(hit);  // 체인으로 적용
-}
-
-// Defender에서 방어자의 Modifier 적용
-foreach (var modifier in defenseModifiers)
-{
-    hit = modifier.Apply(hit);
-}
-```
-
-**예제 Modifier:**
-```csharp
-public class RageBuff : IHitModifier
-{
-    public DamagePhase Phase => DamagePhase.PreHit;
-    public int Priority => 100;
-
-    public Hit Apply(Hit hit)
-    {
-        hit.finalDamage *= 1.5f;  // 50% 데미지 증가
-        return hit;
-    }
-}
-```
-
-**장점:**
-- 버프/디버프를 동적으로 추가/제거 가능
-- Phase와 Priority로 적용 순서 제어
-- 새로운 효과 추가가 용이 (Open-Closed Principle)
-
----
-
-### 5. Component Pattern
-
-**목적:** 기능별로 컴포넌트를 분리하여 재사용성과 유지보수성 향상
-
-**구현:**
-- `Attacker` - 공격 전담
-- `Defender` - 방어 및 HP 관리
-- `Mover` - 이동 전담
-
-**장점:**
-- 각 컴포넌트가 단일 책임 (Single Responsibility Principle)
-- 필요한 기능만 조합 가능 (예: 이동만 가능한 유닛)
-- 테스트가 용이
-
----
-
-### 6. Object Pooling (UnitFactory)
-
-**목적:** 빈번한 생성/파괴로 인한 GC 부하 감소
-
-**구현:**
-```csharp
-// UnitFactory.cs
-ObjectPool<Unit> pool = new ObjectPool<Unit>(
-    createFunc: () => Create(unitPrefab),
-    actionOnGet: PoolOnGet,
-    actionOnRelease: PoolOnRelease,
-    defaultCapacity: 4,
-    maxSize: maxSize
-);
-```
-
-**장점:**
-- 메모리 할당/해제 최소화
-- 성능 향상 (특히 많은 유닛 생성 시)
-
----
-
-### 7. Singleton Pattern (UnitManager)
-
-**목적:** 전역적으로 유닛을 관리하는 단일 인스턴스
-
-**기능:**
-- 팀별 유닛 관리
-- 유닛 등록/해제
-- 팀별 유닛 조회
-
----
 
 ## 핵심 기능
 
@@ -332,12 +146,28 @@ ObjectPool<Unit> pool = new ObjectPool<Unit>(
 ### 기본 사용법
 
 ```csharp
-// 1. 유닛 생성 (Factory에서)
-Unit unit = unitFactory.GetUnit("Warrior");
+// 1. 유닛 생성 (UnitManager를 통해 Factory 접근)
+Unit unit = UnitManager.Instance.UnitFactory.GetUnit("Warrior");
 unit.SetTeam(1);
+
+// 위치를 지정하여 생성
+Unit spawnedUnit = UnitManager.Instance.UnitFactory.GetUnit("Warrior", new Vector3(0, 0, 5));
+
+// 유닛 존재 확인
+if (UnitManager.Instance.UnitFactory.HasUnit("Warrior"))
+{
+    Unit warrior = UnitManager.Instance.UnitFactory.GetUnit("Warrior");
+}
+
+// 사용 가능한 유닛 ID 목록 조회
+var availableUnits = UnitManager.Instance.UnitFactory.GetAvailableUnitIds();
+Debug.Log($"Available units: {string.Join(", ", availableUnits)}");
 
 // 2. 상태 변경
 unit.SetState(UnitState.Attack);
+
+// 강제 상태 전환 (검증 무시 - 특수 상황용)
+unit.ForceSetState(UnitState.Death);  // 즉사 처리 등
 
 // 3. 공격
 Defender target = enemyUnit.Defender;
@@ -362,6 +192,39 @@ unit.Defender.onCurrentHpChanged += (newHp) =>
 };
 ```
 
+### UnitManager 팀 관리
+
+```csharp
+// 팀별 유닛 조회
+var myTeamUnits = UnitManager.Instance.GetTeamUnits(1);
+var enemyUnits = UnitManager.Instance.GetEnemyUnits(1);
+
+// 특정 ID의 유닛 찾기
+var allWarriors = UnitManager.Instance.GetUnitsById(1, "Warrior");
+
+// 팀 유닛 수 확인
+int teamSize = UnitManager.Instance.TeamCount(1);
+
+// 전체 유닛 조회
+var allUnits = UnitManager.Instance.MadeUnits;
+
+// UnitManager 이벤트 구독
+UnitManager.Instance.onUnitRegister += (unit) =>
+{
+    Debug.Log($"Unit registered: {unit.Id}");
+};
+
+UnitManager.Instance.onUnitUnregister += (unit) =>
+{
+    Debug.Log($"Unit unregistered: {unit.Id}");
+};
+
+UnitManager.Instance.onTeamCountChanged += (team) =>
+{
+    UpdateTeamUI(team);
+};
+```
+
 ### 유닛 타입별 설정
 
 ```csharp
@@ -375,117 +238,15 @@ if (unit.StateMachine.IsInState(UnitState.Death))
 }
 ```
 
-### 커스텀 Modifier 생성
-
-```csharp
-public class CriticalHitBuff : IHitModifier
-{
-    public string Name => "Critical Hit";
-    public string Tag => "Buff:Critical";
-    public int Priority => 100;
-    public DamagePhase Phase => DamagePhase.PreHit;
-
-    private float critChance = 0.3f;
-    private float critMultiplier = 2.0f;
-
-    public Hit Apply(Hit hit)
-    {
-        if (Random.value < critChance)
-        {
-            hit.finalDamage *= critMultiplier;
-
-            // Post Callback으로 크리티컬 이펙트 재생
-            hit.postCallbacks.Add(() =>
-            {
-                Debug.Log("CRITICAL HIT!");
-                // 파티클 재생 등
-            });
-        }
-
-        return hit;
-    }
-}
-```
-
 ---
 
 ## 확장 가능성
 
-### 새로운 State 추가
+시스템은 Open-Closed Principle을 준수하여 기존 코드 수정 없이 확장할 수 있습니다:
 
-```csharp
-// 1. State 클래스 생성
-public class StunState : UnitStateBase
-{
-    public override UnitState StateType => UnitState.Stun;
-
-    protected override HashSet<UnitState> AllowedTransitions => new HashSet<UnitState>
-    {
-        UnitState.Idle,
-        UnitState.Death
-    };
-
-    protected override void OnEnter(Unit unit)
-    {
-        // 기절 처리: 이동, 공격 비활성화
-    }
-}
-
-// 2. Enum에 추가
-public enum UnitState
-{
-    Idle, Attack, Move, Death,
-    Stun  // 추가
-}
-
-// 3. Factory에 등록
-private static IEnumerable<IUnitState> CreateDefaultStates()
-{
-    return new IUnitState[]
-    {
-        new IdleState(),
-        new AttackState(),
-        new MoveState(),
-        new StunState(),  // 추가
-        new DeathState()
-    };
-}
-```
-
-### 새로운 유닛 타입 추가
-
-```csharp
-// 1. Enum에 추가
-public enum UnitType
-{
-    Default, Melee, Ranged, Tank, Support, Boss,
-    Healer  // 추가
-}
-
-// 2. Factory에 케이스 추가
-case UnitType.Healer:
-    return CreateHealerStates();
-```
-
-### 새로운 Modifier 추가
-
-```csharp
-public class PoisonDebuff : IHitModifier
-{
-    public string Name => "Poison";
-    public DamagePhase Phase => DamagePhase.PostHit;
-
-    public Hit Apply(Hit hit)
-    {
-        hit.postCallbacks.Add(() =>
-        {
-            // 지속 데미지 적용
-            ApplyDamageOverTime(hit.defender, duration: 5f, tickDamage: 10f);
-        });
-        return hit;
-    }
-}
-```
+- **새로운 State 추가:** `UnitStateBase`를 상속하여 State 클래스 생성 → Enum에 추가 → Factory에 등록
+- **새로운 유닛 타입 추가:** `UnitType` Enum 추가 → `UnitStateFactory`에 케이스 추가
+- **새로운 Modifier 추가:** `IHitModifier` 또는 `IHealModifier` 구현 → `AddAttackModifier()` 또는 `AddDefenseModifier()`로 동적 추가
 
 ---
 
@@ -521,7 +282,60 @@ public class PoisonDebuff : IHitModifier
 
 ---
 
-### 3. Modifier 정렬 시스템
+### 3. Hit/Heal은 Struct, Modifier는 Class인 이유
+
+**문제:** Hit/Heal과 Modifier를 Class vs Struct 중 어떤 것으로 구현할까?
+
+**결정:**
+- **Hit/Heal:** Struct (값 타입)
+- **Modifier:** Class (참조 타입, Interface 구현)
+
+**이유:**
+
+**Hit/Heal을 Struct로 구현:**
+- **짧은 수명:** 공격/힐 1회 동안만 존재하고 즉시 소멸
+- **Value Semantics:** Modifier 체인에서 값 복사로 안전성 확보
+- **스택 할당:** GC 부하 제거 (공격이 빈번하게 발생)
+- **불변성:** Modifier가 원본을 수정하지 않고 새 값을 반환하도록 강제
+- **작은 크기:** 약 24-32바이트로 복사 비용이 낮음
+
+**Modifier를 Class로 구현:**
+- **긴 수명:** 버프/디버프가 지속되는 동안 계속 존재
+- **동적 관리:** List에 추가/제거가 빈번함
+- **참조 동일성:** 같은 버프를 찾아서 제거 가능 (`RemoveAttackModifier(modifier)`)
+- **상태 보유:** multiplier, duration, stack 등 변경 가능한 필드
+- **Interface 사용:** Struct를 Interface로 참조하면 Boxing 발생 → 성능 악화
+
+**만약 Modifier를 Struct로 만들면:**
+```csharp
+// ❌ 문제 1: Boxing 발생
+List<IHitModifier> modifiers = new();
+modifiers.Add(new RageBuff(1.5f));  // Struct → Interface = Boxing!
+
+// ❌ 문제 2: Remove 불가능
+RageBuff buff = new RageBuff(1.5f);
+attacker.AddAttackModifier(buff);    // 복사본이 추가됨
+attacker.RemoveAttackModifier(buff); // 다른 인스턴스라 못 찾음!
+
+// ❌ 문제 3: 상태 변경 불가
+public struct TimedBuff : IHitModifier
+{
+    private float duration;
+    public Hit Apply(Hit hit)
+    {
+        duration -= Time.deltaTime;  // 복사본만 수정됨!
+        return hit;
+    }
+}
+```
+
+**Trade-off:**
+- Struct는 16바이트 이하일 때 최적이지만, Hit은 약 24-32바이트
+- 단, 공격 빈도가 높고 GC 회피 이점이 크기 때문에 Struct 선택이 합리적
+
+---
+
+### 4. Modifier 정렬 시스템
 
 **문제:** Modifier를 어떤 순서로 적용할 것인가?
 
@@ -554,7 +368,43 @@ var sortedModifiers = modifiers
 
 ---
 
-### 5. Factory Pattern으로 확장성 확보
+### 5. Event-Driven Architecture 채택
+
+**문제:** 시스템 간 통신을 직접 참조 vs 이벤트 기반으로 할 것인가?
+
+**결정:** C# event 기반 느슨한 결합
+
+**구현된 이벤트:**
+- **Unit:** `onDeath`, `onDestroy`
+- **Defender:** `onCurrentHpChanged`, `onMaxHpChanged`, `onDeath`
+- **Mover:** `onMoveStart`, `onMoveComplete`
+- **UnitStateMachine:** `onStateChanged`
+- **UnitManager:** `onUnitRegister`, `onUnitUnregister`, `onTeamCountChanged`
+
+**장점:**
+- **느슨한 결합:** UI는 Unit을 직접 참조하지 않고도 HP 변화 감지 가능
+- **확장성:** 새로운 리스너 추가 시 기존 코드 수정 불필요
+- **테스트 용이:** Mock 리스너로 검증 가능
+- **다중 구독:** 여러 시스템이 독립적으로 같은 이벤트 구독 가능
+
+**예시:**
+```csharp
+// 여러 시스템이 독립적으로 구독
+unit.Defender.onCurrentHpChanged += (hp) => healthBar.SetValue(hp);
+unit.Defender.onCurrentHpChanged += (hp) => audioManager.PlayHurtSound();
+unit.Defender.onCurrentHpChanged += (hp) => damageNumberSpawner.Spawn(hp);
+
+unit.Defender.onDeath += () => questSystem.OnEnemyKilled(unit.Id);
+unit.Defender.onDeath += () => particleSystem.PlayDeathEffect(unit.transform.position);
+```
+
+**Trade-off:**
+- **장점:** 의존성 역전 (UI가 Unit을 몰라도 됨)
+- **단점:** 이벤트 구독 해제를 잊으면 메모리 누수 (Unity에서는 GameObject 파괴 시 자동 해제되므로 일반적으로 문제 없음)
+
+---
+
+### 6. Factory Pattern으로 확장성 확보
 
 **문제:** StateMachine에서 State를 하드코딩 vs Factory 사용
 
@@ -574,8 +424,10 @@ var sortedModifiers = modifiers
 - Prewarm으로 초기 로딩 시간 분산
 
 ### Modifier 정렬
-- LINQ 사용하지만 매 공격마다 정렬하지 않도록 최적화 가능
-- Modifier 추가/제거 시에만 재정렬하는 방식으로 개선 가능
+- **현재 구현:** 매 공격마다 LINQ로 정렬 (코드 간결성과 명확성 우선)
+- **성능 영향:** Modifier 개수가 적을 때는 무시 가능 (일반적으로 3-5개)
+- **최적화 방향:** Modifier 추가/제거 시에만 재정렬하여 정렬된 리스트 캐싱
+- **Trade-off:** 현재 방식은 버그 방지와 코드 가독성을 우선하며, 프로파일링 결과 병목 발생 시 최적화 적용 예정
 
 ### Event System
 - C# event 사용으로 느슨한 결합 유지

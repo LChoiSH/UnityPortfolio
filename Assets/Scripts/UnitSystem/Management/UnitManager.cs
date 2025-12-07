@@ -2,11 +2,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditor;
 using UnityEngine;
-using UnitSystem;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
-public class UnitManager : MonoBehaviour
+namespace UnitSystem
+{
+    public class UnitManager : MonoBehaviour
 {
     private static UnitManager _instance;
     public static UnitManager Instance
@@ -90,5 +93,6 @@ public class UnitManager : MonoBehaviour
         Debug.Log($"Stage Read Success");
     }
 #endif
+}
 }
     

@@ -111,11 +111,9 @@ namespace UnitSystem
             SetState(UnitState.Death);
             onDeath?.Invoke(this);
 
-            yield return new WaitForSeconds(2);
+            yield return new WaitForSeconds(duration);
 
             onDestroy?.Invoke(this);
-
-            yield return new WaitForSeconds(1);
 
             // if dont have factory
             Destroy(gameObject);

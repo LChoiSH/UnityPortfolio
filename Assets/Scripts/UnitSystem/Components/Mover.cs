@@ -1,10 +1,11 @@
 using System;
 using System.Collections;
 using UnityEngine;
-using UnitSystem;
 
-[RequireComponent(typeof(Unit))]
-public class Mover : MonoBehaviour
+namespace UnitSystem
+{
+    [RequireComponent(typeof(Unit))]
+    public class Mover : MonoBehaviour
 {
     private Unit unit;
     private Coroutine moveCoroutine;
@@ -73,4 +74,5 @@ public class Mover : MonoBehaviour
 
         onMoveComplete?.Invoke(targetPosition);
     }
+}
 }
