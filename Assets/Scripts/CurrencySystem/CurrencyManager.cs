@@ -22,10 +22,12 @@ public class CurrencyManager : MonoBehaviour, HaveSave, HaveLoad
 
     // ========== Async Save Pattern Fields ==========
     [Header("Save Settings")]
-    [SerializeField] private float debounceTime = 0.5f; // Debounce 시간 (초)
+    [SerializeField] private float debounceTime = 0.5f;  // 일반 대기 시간 (초)
+    [SerializeField] private float maxWaitTime = 5.0f;   // 최대 대기 시간 (초) - 기아 상태 방지
 
     private bool isDirty = false; // 저장이 필요한지 여부 (Dirty Flag Pattern)
     private bool isSaving = false; // 현재 저장 중인지 여부 (Pending Save Pattern)
+    private float? firstCallTime = null; // 첫 호출 시간 기록 (Max Wait Time)
     private CancellationTokenSource debounceCts; // Debounce 취소 토큰
 
     public Sprite GetCurrencyImage(string currencyName) => currencyDic[currencyName].Icon;
@@ -66,8 +68,9 @@ public class CurrencyManager : MonoBehaviour, HaveSave, HaveLoad
     // ========== Async Save Pattern Implementation ==========
 
     /// <summary>
-    /// 저장 요청을 받습니다. Debouncing + Pending Save 패턴을 사용합니다.
+    /// 저장 요청을 받습니다. Debouncing + Pending Save + Max Wait Time 패턴을 사용합니다.
     /// - Debouncing: 짧은 시간 내 여러 호출 시 마지막만 실행
+    /// - Max Wait Time: 일정 시간 이상 대기 시 강제 저장 (기아 상태 방지)
     /// - Pending Save: I/O 진행 중이면 완료 후 재실행
     /// - Dirty Flag: 실제 변경사항이 있을 때만 저장
     /// </summary>
@@ -75,40 +78,68 @@ public class CurrencyManager : MonoBehaviour, HaveSave, HaveLoad
     {
         isDirty = true; // 저장이 필요함을 표시
 
-        // 1. Debouncing: 기존 타이머 취소 및 새 타이머 시작
+        // 1. 첫 호출 시간 기록 (Max Wait Time 계산용)
+        if (firstCallTime == null) firstCallTime = Time.time;
+
+        // 2. Max Wait Time 체크 - 너무 오래 기다렸으면 즉시 저장
+        float waitedTime = Time.time - firstCallTime.Value;
+        if (waitedTime >= maxWaitTime)
+        {
+            firstCallTime = null; // 타이머 리셋
+            await ExecuteSave();
+            return;
+        }
+
+        // 3. Debouncing: 기존 타이머 취소 및 새 타이머 시작
         debounceCts?.Cancel();
         debounceCts = new CancellationTokenSource();
 
         try
         {
-            // 2. Debounce 대기 (이 시간 내 재호출되면 취소됨)
-            await UniTask.Delay(TimeSpan.FromSeconds(debounceTime), cancellationToken: debounceCts.Token);
+            // 4. Debounce 대기 (남은 시간만큼만 대기)
+            float remainingTime = maxWaitTime - waitedTime;
+            float actualDebounceTime = Mathf.Min(debounceTime, remainingTime);
 
-            // 3. Pending Save: 저장 중이면 완료 대기
-            while (isSaving)
-            {
-                await UniTask.Yield(); // 한 프레임 대기
-            }
+            await UniTask.Delay(TimeSpan.FromSeconds(actualDebounceTime), cancellationToken: debounceCts.Token);
 
-            // 4. Dirty Flag 체크 후 저장
-            if (isDirty)
-            {
-                isDirty = false;
-                isSaving = true;
+            // 5. 저장 성공 → 타이머 리셋
+            firstCallTime = null;
 
-                try
-                {
-                    await SaveAsync();
-                }
-                finally
-                {
-                    isSaving = false; // 저장 완료 (에러 발생해도 플래그 해제)
-                }
-            }
+            // 6. 실제 저장 실행
+            await ExecuteSave();
         }
         catch (OperationCanceledException)
         {
             // Debounce 취소됨 (새로운 RequestSave가 호출됨), 정상 동작
+            // firstCallTime은 유지 (MaxWaitTime 계산 계속)
+        }
+    }
+
+    /// <summary>
+    /// 실제 저장 로직 실행 (Pending Save + Dirty Flag 체크)
+    /// </summary>
+    private async UniTask ExecuteSave()
+    {
+        // Pending Save: 저장 중이면 완료 대기
+        while (isSaving)
+        {
+            await UniTask.Yield(); // 한 프레임 대기
+        }
+
+        // Dirty Flag 체크 후 저장
+        if (isDirty)
+        {
+            isDirty = false;
+            isSaving = true;
+
+            try
+            {
+                await SaveAsync();
+            }
+            finally
+            {
+                isSaving = false; // 저장 완료 (에러 발생해도 플래그 해제)
+            }
         }
     }
 
