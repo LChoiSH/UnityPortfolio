@@ -13,6 +13,12 @@ namespace UnitSystem
         private List<IHitModifier> defenseModifiers = new();
         private List<IHealModifier> healModifiers = new();
 
+        // Dirty Flag Pattern for performance optimization
+        private List<IHitModifier> sortedDefenseModifiers = new();
+        private List<IHealModifier> sortedHealModifiers = new();
+        private bool isDefenseModifiersDirty = true;
+        private bool isHealModifiersDirty = true;
+
         public int MaxHp => unit != null ? unit.Stat.maxHp : 0;
         public float CurrentHp => currentHp;
         public float HpRatio => MaxHp > 0 ? currentHp / (float)MaxHp : 0;
@@ -42,12 +48,18 @@ namespace UnitSystem
 
         public void Damaged(Hit hit)
         {
-            // Apply defense modifiers sorted by Phase and Priority
-            var sortedModifiers = defenseModifiers
-                .OrderBy(m => m.Phase)
-                .ThenByDescending(m => m.Priority);
+            // Sort modifiers only when changed (Dirty Flag Pattern)
+            if (isDefenseModifiersDirty)
+            {
+                sortedDefenseModifiers = defenseModifiers
+                    .OrderBy(m => m.Phase)
+                    .ThenByDescending(m => m.Priority)
+                    .ToList();
+                isDefenseModifiersDirty = false;
+            }
 
-            foreach (var modifier in sortedModifiers)
+            // Apply sorted defense modifiers
+            foreach (var modifier in sortedDefenseModifiers)
             {
                 hit = modifier.Apply(hit);
             }
@@ -74,12 +86,18 @@ namespace UnitSystem
 
         public void Healed(Heal heal)
         {
-            // Apply heal modifiers sorted by Phase and Priority
-            var sortedModifiers = healModifiers
-                .OrderBy(m => m.Phase)
-                .ThenByDescending(m => m.Priority);
+            // Sort modifiers only when changed (Dirty Flag Pattern)
+            if (isHealModifiersDirty)
+            {
+                sortedHealModifiers = healModifiers
+                    .OrderBy(m => m.Phase)
+                    .ThenByDescending(m => m.Priority)
+                    .ToList();
+                isHealModifiersDirty = false;
+            }
 
-            foreach (var modifier in sortedModifiers)
+            // Apply sorted heal modifiers
+            foreach (var modifier in sortedHealModifiers)
             {
                 heal = modifier.Apply(heal);
             }
@@ -102,31 +120,37 @@ namespace UnitSystem
         public void AddDefenseModifier(IHitModifier modifier)
         {
             defenseModifiers.Add(modifier);
+            isDefenseModifiersDirty = true;
         }
 
         public void RemoveDefenseModifier(IHitModifier modifier)
         {
             defenseModifiers.Remove(modifier);
+            isDefenseModifiersDirty = true;
         }
 
         public void ClearDefenseModifiers()
         {
             defenseModifiers.Clear();
+            isDefenseModifiersDirty = true;
         }
 
         public void AddHealModifier(IHealModifier modifier)
         {
             healModifiers.Add(modifier);
+            isHealModifiersDirty = true;
         }
 
         public void RemoveHealModifier(IHealModifier modifier)
         {
             healModifiers.Remove(modifier);
+            isHealModifiersDirty = true;
         }
 
         public void ClearHealModifiers()
         {
             healModifiers.Clear();
+            isHealModifiersDirty = true;
         }
 
         // --------- Editor Debug ---------

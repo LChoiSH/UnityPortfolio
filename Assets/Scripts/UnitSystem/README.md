@@ -80,14 +80,14 @@ UnitSystem/
 
 | 패턴 | 적용 위치 | 목적 |
 |------|----------|------|
-| **State Pattern** | States/ | 상태별 행동 캡슐화, 명확한 상태 전환 관리 |
-| **Template Method** | UnitStateBase | 공통 로직 자동화, 서브클래스는 커스텀 로직만 구현 |
-| **Factory Pattern** | UnitStateFactory, UnitFactory | 유닛 타입별 다른 상태 조합, Object Pooling |
-| **Modifier (Chain of Responsibility)** | IHitModifier, IHealModifier | 버프/디버프 동적 추가/제거, Phase/Priority 정렬 |
-| **Component Pattern** | Attacker, Defender, Mover | 기능별 분리, 단일 책임 원칙 |
-| **Event-Driven Architecture** | 모든 컴포넌트 | 느슨한 결합, 다중 구독 가능 |
+| **[State Pattern](#1-enum과-state-클래스를-함께-사용하는-이유)** | States/ | 상태별 행동 캡슐화, 명확한 상태 전환 관리 |
+| **[Template Method](#2-template-method-pattern-사용-이유)** | UnitStateBase | 공통 로직 자동화, 서브클래스는 커스텀 로직만 구현 |
+| **[Factory Pattern](#7-factory-pattern으로-확장성-확보)** | UnitStateFactory, UnitFactory | 유닛 타입별 다른 상태 조합, Object Pooling |
+| **[Modifier (Dirty Flag)](#4-modifier-정렬-최적화-dirty-flag-pattern)** | IHitModifier, IHealModifier | 버프/디버프 동적 추가/제거, 변경 시에만 재정렬 |
+| **[Component Pattern](#5-component-vs-inheritance)** | Attacker, Defender, Mover | 기능별 분리, 단일 책임 원칙 |
+| **[Event-Driven Architecture](#6-event-driven-architecture-채택)** | 모든 컴포넌트 | 느슨한 결합, 다중 구독 가능 |
 | **Singleton** | UnitManager | 전역 유닛 관리, 팀별 유닛 조회 |
-| **Object Pooling** | UnitFactory | GC 부하 감소, 성능 최적화 |
+| **[Object Pooling](#object-pooling)** | UnitFactory | GC 부하 감소, 성능 최적화 |
 
 **⚠️ 현재 구현 상태:**
 - `Boss`와 `Ranged` 유닛은 기본 상태와 동일한 세트를 사용합니다 (Factory Pattern의 확장성 시연용 구조)
@@ -335,27 +335,61 @@ public struct TimedBuff : IHitModifier
 
 ---
 
-### 4. Modifier 정렬 시스템
+### 4. Modifier 정렬 최적화 (Dirty Flag Pattern)
 
-**문제:** Modifier를 어떤 순서로 적용할 것인가?
+**문제:** 매 공격/힐마다 Modifier를 정렬하면 불필요한 연산 발생
 
-**결정:** Phase → Priority 순으로 정렬
+**결정:** Dirty Flag 패턴으로 변경 시에만 재정렬
 
 **이유:**
-- Phase로 큰 흐름 제어 (PreHit → Mitigation → PostHit)
-- Priority로 같은 Phase 내 우선순위 제어
-- 명확하고 예측 가능한 동작
+- **공격/힐 빈도:** 초당 수십~수백 회 발생 (매우 빈번)
+- **Modifier 변경 빈도:** 버프 획득/만료 시에만 발생 (드묾)
+- **성능 개선:** O(n log n) 정렬을 캐싱 후 O(n) 순회로 전환
+- **실전 적합성:** CalcSystem에서도 동일한 패턴 사용 (일관성)
 
 **구현:**
 ```csharp
-var sortedModifiers = modifiers
-    .OrderBy(m => m.Phase)
-    .ThenByDescending(m => m.Priority);
+// Dirty Flag와 캐시
+private List<IHitModifier> sortedAttackModifiers = new();
+private bool isModifiersDirty = true;
+
+public void Attack(Defender defender)
+{
+    // 변경된 경우에만 재정렬
+    if (isModifiersDirty)
+    {
+        sortedAttackModifiers = attackModifiers
+            .OrderBy(m => m.Phase)
+            .ThenByDescending(m => m.Priority)
+            .ToList();
+        isModifiersDirty = false;
+    }
+
+    foreach (var modifier in sortedAttackModifiers)
+    {
+        hit = modifier.Apply(hit);
+    }
+}
+
+public void AddAttackModifier(IHitModifier modifier)
+{
+    attackModifiers.Add(modifier);
+    isModifiersDirty = true;  // 재정렬 필요 플래그
+}
 ```
+
+**Trade-off:**
+- **메모리:** 정렬된 리스트 추가 (Modifier당 8바이트 참조, 무시 가능)
+- **복잡도:** Dirty flag 관리 로직 추가
+- **성능:** 실전에서 체감 가능한 개선 (정렬 99% 이상 제거)
+
+**정렬 순서:**
+- **Phase:** PreHit → Mitigation → PostHit (큰 흐름 제어)
+- **Priority:** 같은 Phase 내에서 높은 Priority 먼저 적용
 
 ---
 
-### 4. Component vs Inheritance
+### 5. Component vs Inheritance
 
 **문제:** 기능을 상속으로 구현 vs Component로 분리
 
@@ -368,7 +402,7 @@ var sortedModifiers = modifiers
 
 ---
 
-### 5. Event-Driven Architecture 채택
+### 6. Event-Driven Architecture 채택
 
 **문제:** 시스템 간 통신을 직접 참조 vs 이벤트 기반으로 할 것인가?
 
@@ -404,7 +438,7 @@ unit.Defender.onDeath += () => particleSystem.PlayDeathEffect(unit.transform.pos
 
 ---
 
-### 6. Factory Pattern으로 확장성 확보
+### 7. Factory Pattern으로 확장성 확보
 
 **문제:** StateMachine에서 State를 하드코딩 vs Factory 사용
 
